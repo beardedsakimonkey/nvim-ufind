@@ -55,8 +55,8 @@
 
 (fn open [source display cb]
   "The entrypoint for opening a finder window.
-  `source` can be either a sequential table of any type or a function returning such.
-  `display` is a function that converts an element of `source` into a string.
+  `source` can be either a sequential table of any type or a function returning one.
+  `display` is a function that converts an element of the `source` table into a string.
   `cb` is a function that's called when selecting an item to open.
 
   More formally:
@@ -124,30 +124,6 @@
     ;; Trim prompt from the query
     (query:sub (+ 1 (length PROMPT))))
 
-  (local match-ns (api.nvim_create_namespace :ufind/match))
-  (local virt-ns (api.nvim_create_namespace :ufind/virt))
-
-  (fn on-lines []
-    (local fzy (require :ufind.fzy))
-    ;; Reset cursor to top
-    (set-cursor 1)
-    ;; Run the fuzzy filter
-    (local matches (fzy.filter (get-query) (vim.tbl_map #(display $1) source)))
-    ;; Put the matched lines into `results`
-    (set results
-         (->> matches
-              (vim.tbl_map (fn [[i positions score]]
-                             {:data (. source i) : score : positions}))))
-    ;; Sort results by score descending
-    (table.sort results #(> $1.score $2.score))
-    ;; Render results
-    (api.nvim_buf_set_lines result-buf 0 -1 true
-                            (vim.tbl_map #(display $1.data) results))
-    ;; Render result count virtual text
-    (use-virt-text virt-ns (.. (length results) " / " (length source)))
-    ;; Highlight matched characters
-    (use-hl-matches match-ns results))
-
   (fn keymap [mode lhs rhs]
     (vim.keymap.set mode lhs rhs {:nowait true :silent true :buffer input-buf}))
 
@@ -166,6 +142,31 @@
   (keymap :i :<PageDown> #(move-cursor-page false false))
   (keymap :i :<Home> #(set-cursor 1))
   (keymap :i :<End> #(set-cursor (api.nvim_buf_line_count result-buf)))
+  ;; Namespaces
+  (local match-ns (api.nvim_create_namespace :ufind/match))
+  (local virt-ns (api.nvim_create_namespace :ufind/virt))
+
+  (fn on-lines []
+    (local fzy (require :ufind.fzy))
+    ;; Reset cursor to top
+    (set-cursor 1)
+    ;; Run the fuzzy filter
+    (local matches (fzy.filter (get-query) (vim.tbl_map #(display $1) source)))
+    ;; Transform matches into `results`
+    (set results
+         (->> matches
+              (vim.tbl_map (fn [[i positions score]]
+                             {:data (. source i) : score : positions}))))
+    ;; Sort results
+    (table.sort results #(> $1.score $2.score))
+    ;; Render results
+    (api.nvim_buf_set_lines result-buf 0 -1 true
+                            (vim.tbl_map #(display $1.data) results))
+    ;; Render result count virtual text
+    (use-virt-text virt-ns (.. (length results) " / " (length source)))
+    ;; Highlight matched characters
+    (use-hl-matches match-ns results))
+
   ;; `on_lines` can be called in various contexts wherein textlock could prevent
   ;; changing buffer contents and window layout. Use `schedule` to defer such
   ;; operations to the main loop.
