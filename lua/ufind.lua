@@ -32,7 +32,9 @@ local function handle_vimresized(input_win, result_win)
   local function relayout()
     local input_win_layout, result_win_layout = get_win_layouts()
     api.nvim_win_set_config(input_win, input_win_layout)
-    return api.nvim_win_set_config(result_win, result_win_layout)
+    api.nvim_win_set_config(result_win, result_win_layout)
+    do end (vim.wo)[result_win]["cursorline"] = true
+    return nil
   end
   local auid = api.nvim_create_autocmd("VimResized", {callback = relayout})
   return auid
@@ -166,7 +168,7 @@ local function open(source, display, cb)
   local function keymap(mode, lhs, rhs)
     return vim.keymap.set(mode, lhs, rhs, {nowait = true, silent = true, buffer = input_buf})
   end
-  keymap("i", "<Esc>", cleanup)
+  keymap({"i", "n"}, "<Esc>", cleanup)
   local function _19_()
     return open_result("edit")
   end

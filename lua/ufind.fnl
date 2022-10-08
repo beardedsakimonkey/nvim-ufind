@@ -47,7 +47,9 @@
   (fn relayout []
     (local (input-win-layout result-win-layout) (get-win-layouts))
     (api.nvim_win_set_config input-win input-win-layout)
-    (api.nvim_win_set_config result-win result-win-layout))
+    ;; NOTE: This disables 'cursorline' due to style = 'minimal' window config
+    (api.nvim_win_set_config result-win result-win-layout)
+    (tset vim.wo result-win :cursorline true))
 
   (local auid (api.nvim_create_autocmd :VimResized {:callback relayout}))
   auid)
@@ -157,7 +159,7 @@
   (fn keymap [mode lhs rhs]
     (vim.keymap.set mode lhs rhs {:nowait true :silent true :buffer input-buf}))
 
-  (keymap :i :<Esc> cleanup) ; can use <C-c> to exit insert mode
+  (keymap [:i :n] :<Esc> cleanup) ; can use <C-c> to exit insert mode
   (keymap :i :<CR> #(open-result :edit))
   (keymap :i :<C-l> #(open-result :vsplit))
   (keymap :i :<C-s> #(open-result :split))
@@ -178,6 +180,7 @@
   (local on_lines (vim.schedule_wrap (TIME on-lines)))
   ;; NOTE: `on_lines` gets called immediately because of setting the prompt
   (assert (api.nvim_buf_attach input-buf false {: on_lines}))
+  ;; TODO: make this a better UX
   (api.nvim_create_autocmd :BufLeave {:buffer input-buf :callback cleanup})
   (vim.cmd :startinsert))
 
