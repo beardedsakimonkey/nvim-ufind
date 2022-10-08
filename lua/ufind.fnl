@@ -55,12 +55,12 @@
 
 (fn open [source display cb]
   "The entrypoint for opening a finder window.
-  `source` can be either a sequential table of any type or a function returning one.
+  `source` is a sequential table of any type.
   `display` is a function that converts an element of the `source` table into a string.
   `cb` is a function that's called when selecting an item to open.
 
   More formally:
-    type source = array<'a> | () => array<'a>
+    type source = array<'a>
     type display = 'a => string
     type cmd = 'edit' | 'split' | 'vsplit' | 'tabedit'
     type cb = (cmd, 'a) => nil
@@ -75,7 +75,6 @@
   (local (input-buf result-buf) (create-bufs))
   (local (input-win result-win) (create-wins input-buf result-buf))
   (local auid (handle-vimresized input-win result-win))
-  (local source (if (= :function (type source)) (source) source))
   (assert (= :table (type source)))
   ;; The data backing what's shown in the result window.
   ;; Structure: { data: any, score: int, positions: array<int> }
