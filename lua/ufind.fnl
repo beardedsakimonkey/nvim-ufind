@@ -2,14 +2,6 @@
 
 (local PROMPT "> ")
 
-(fn TIME [func]
-  (fn [...]
-    (local start (vim.loop.hrtime))
-    (func ...)
-    (local end (vim.loop.hrtime))
-    (local diff-ms (/ 1000000 (- end start)))
-    (print "Time: " diff-ms)))
-
 (fn get-win-layouts []
   ;; Size of the window
   (local height (-> vim.go.lines (* 0.8) (math.floor)))
@@ -177,7 +169,7 @@
   ;; `on_lines` can be called in various contexts wherein textlock could prevent
   ;; changing buffer contents and window layout. Use `schedule` to defer such
   ;; operations to the main loop.
-  (local on_lines (vim.schedule_wrap (TIME on-lines)))
+  (local on_lines (vim.schedule_wrap on-lines))
   ;; NOTE: `on_lines` gets called immediately because of setting the prompt
   (assert (api.nvim_buf_attach input-buf false {: on_lines}))
   ;; TODO: make this a better UX
