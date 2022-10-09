@@ -60,24 +60,24 @@ local function create_bufs()
 end
 
 local config_defaults = {
-  ['get-display'] = function(item) return item end,
-  ['get-value'] = function(item) return item end,
-  ['on-complete'] = function(cmd, item) vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(item)) end,
+  get_display = function(item) return item end,
+  get_value = function(item) return item end,
+  on_complete = function(cmd, item) vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(item)) end,
 }
 
 -- The entrypoint for opening a finder window.
 -- `items`: a sequential table of any type.
 -- `config`: an optional table containing:
---   `get-display`: a function that converts an item to a string to be displayed in the results window.
---   `get-value`: a function that converts an item to a string to be passed to the fuzzy filterer.
---   `on-complete`: a function that's called when selecting an item to open.
+--   `get_display`: a function that converts an item to a string to be displayed in the results window.
+--   `get_value`: a function that converts an item to a string to be passed to the fuzzy filterer.
+--   `on_complete`: a function that's called when selecting an item to open.
 --
 -- More formally:
 --   type items = array<'item>
 --   type config? = {
---     get-display?: 'item => string,
---     get-value?: 'item => string,
---     on-complete?: ('edit' | 'split' | 'vsplit' | 'tabedit', 'item) => nil,
+--     get_display?: 'item => string,
+--     get_value?: 'item => string,
+--     on_complete?: ('edit' | 'split' | 'vsplit' | 'tabedit', 'item) => nil,
 --   }
 --
 -- Example:
@@ -85,10 +85,10 @@ local config_defaults = {
 --
 --   -- using a custom data structure
 --   require'ufind'.open([{path='/home/blah/foo', label='foo'}],
---                       { get-display = function(item)
+--                       { get_display = function(item)
 --                           return item.label
 --                         end,
---                         on-complete = function(cmd, item)
+--                         on_complete = function(cmd, item)
 --                           vim.cmd('edit ' .. item.path)
 --                         end })
 local function open(items, config)
@@ -101,7 +101,7 @@ local function open(items, config)
 
   -- Mapping from match index (essentially the line number of the selected
   -- result) to item index (the index of the corresponding item in  `items`).
-  -- This is needed by `open_result` to pass the selected item to `on-complete`.
+  -- This is needed by `open_result` to pass the selected item to `on_complete`.
   local match_to_item = {}
 
   local function set_cursor(line)
@@ -135,7 +135,7 @@ local function open(items, config)
     local item_idx = match_to_item[row]
     local item = items[item_idx]
     cleanup()
-    return config['on-complete'](cmd, item)
+    return config.on_complete(cmd, item)
   end
 
   local function keymap(mode, lhs, rhs)
@@ -188,7 +188,7 @@ local function open(items, config)
     set_cursor(1)
     -- Run the fuzzy filter
     local matches = require('ufind.fzy').filter(get_query(), vim.tbl_map(function(item)
-      return config['get-value'](item)
+      return config.get_value(item)
     end, items))
     -- Sort matches
     table.sort(matches, function(a, b)
@@ -197,7 +197,7 @@ local function open(items, config)
     -- Render matches
     api.nvim_buf_set_lines(result_buf, 0, -1, true, vim.tbl_map(function(match)
       local i = match[1]
-      return config['get-display'](items[i])
+      return config.get_display(items[i])
     end, matches))
     -- Render result count virtual text
     use_virt_text(#matches .. ' / ' .. #items)
