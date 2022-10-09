@@ -53,18 +53,26 @@
   (vim.fn.prompt_setprompt input-buf PROMPT)
   (values input-buf result-buf))
 
+(local config-defaults
+       {:get-display #$1
+        :get-value #$1
+        :on-complete (fn [cmd item]
+                       (vim.cmd (.. cmd " " (vim.fn.fnameescape item))))})
+
 (fn open [items ?config]
   "The entrypoint for opening a finder window.
   `items`: a sequential table of any type.
   `config`: an optional table containing:
-    `get-display`: a function that converts an element of the `items` table into a string.
+    `get-display`: a function that converts an item to a string to be displayed in the results window.
+    `get-value`: a function that converts an item to a string to be passed to the fuzzy filterer.
     `on-complete`: a function that's called when selecting an item to open.
 
   More formally:
     type items = array<'item>
     type config? = {
-      on-complete?: ('edit' | 'split' | 'vsplit' | 'tabedit', 'item) => nil,
       get-display?: 'item => string,
+      get-value?: 'item => string,
+      on-complete?: ('edit' | 'split' | 'vsplit' | 'tabedit', 'item) => nil,
     }
 
   Example:
@@ -79,11 +87,7 @@
                             vim.cmd('edit ' .. item.path)
                           end })"
   (assert (= :table (type items)))
-  (local config-defaults
-         {:get-display #$1
-          :on-complete (fn [cmd item]
-                         (vim.cmd (.. cmd " " (vim.fn.fnameescape item))))})
-  (local config (vim.tbl_extend :force config-defaults (or ?config {})))
+  (local config (vim.tbl_extend :force {} config-defaults (or ?config {})))
   (local orig-win (api.nvim_get_current_win))
   (local (input-buf result-buf) (create-bufs))
   (local (input-win result-win) (create-wins input-buf result-buf))
@@ -163,7 +167,7 @@
     (set-cursor 1)
     ;; Run the fuzzy filter
     (local matches
-           (fzy.filter (get-query) (vim.tbl_map #(config.get-display $1) items)))
+           (fzy.filter (get-query) (vim.tbl_map #(config.get-value $1) items)))
     ;; Transform matches into `results`
     (set results
          (->> matches
