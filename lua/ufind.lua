@@ -54,41 +54,37 @@ local function open(items, _3fconfig)
   local input_buf, result_buf = create_bufs()
   local input_win, result_win = create_wins(input_buf, result_buf)
   local auid = handle_vimresized(input_win, result_win)
-  local results
-  local function _4_(_241)
-    return {data = _241, score = 0, positions = {}}
-  end
-  results = vim.tbl_map(_4_, items)
+  local match_to_item = {}
   local function set_cursor(line)
     return api.nvim_win_set_cursor(result_win, {line, 0})
   end
   local function move_cursor(offset)
-    local _local_5_ = api.nvim_win_get_cursor(result_win)
-    local old_row = _local_5_[1]
-    local _ = _local_5_[2]
+    local _local_4_ = api.nvim_win_get_cursor(result_win)
+    local old_row = _local_4_[1]
+    local _ = _local_4_[2]
     local lines = api.nvim_buf_line_count(result_buf)
     local new_row = math.max(math.min((old_row + offset), lines), 1)
     return set_cursor(new_row)
   end
   local function move_cursor_page(up_3f, half_3f)
-    local _local_6_ = api.nvim_win_get_config(result_win)
-    local height = _local_6_["height"]
+    local _local_5_ = api.nvim_win_get_config(result_win)
+    local height = _local_5_["height"]
     local offset
-    local function _7_()
+    local function _6_()
       if up_3f then
         return -1
       else
         return 1
       end
     end
-    local function _8_()
+    local function _7_()
       if half_3f then
         return 2
       else
         return 1
       end
     end
-    offset = ((height * _7_()) / _8_())
+    offset = ((height * _6_()) / _7_())
     return move_cursor(offset)
   end
   local function cleanup()
@@ -108,118 +104,144 @@ local function open(items, _3fconfig)
     end
   end
   local function open_result(cmd)
-    local _local_12_ = api.nvim_win_get_cursor(result_win)
-    local row = _local_12_[1]
-    local _ = _local_12_[2]
+    local _local_11_ = api.nvim_win_get_cursor(result_win)
+    local row = _local_11_[1]
+    local _ = _local_11_[2]
+    local item_idx = match_to_item[row]
+    local item = items[item_idx]
     cleanup()
-    return config["on-complete"](cmd, results[row].data)
-  end
-  local function use_hl_matches(ns, results0)
-    api.nvim_buf_clear_namespace(result_buf, ns, 0, -1)
-    for i, result in ipairs(results0) do
-      for _, pos in ipairs(result.positions) do
-        api.nvim_buf_add_highlight(result_buf, ns, "UfindMatch", (i - 1), (pos - 1), pos)
-      end
-    end
-    return nil
-  end
-  local function use_virt_text(ns, text)
-    api.nvim_buf_clear_namespace(input_buf, ns, 0, -1)
-    return api.nvim_buf_set_extmark(input_buf, ns, 0, -1, {virt_text = {{text, "Comment"}}, virt_text_pos = "right_align"})
-  end
-  local function get_query()
-    local _local_13_ = api.nvim_buf_get_lines(input_buf, 0, 1, true)
-    local query = _local_13_[1]
-    return query:sub((1 + #PROMPT))
+    return config["on-complete"](cmd, item)
   end
   local function keymap(mode, lhs, rhs)
     return vim.keymap.set(mode, lhs, rhs, {nowait = true, silent = true, buffer = input_buf})
   end
   keymap({"i", "n"}, "<Esc>", cleanup)
-  local function _14_()
+  local function _12_()
     return open_result("edit")
   end
-  keymap("i", "<CR>", _14_)
-  local function _15_()
+  keymap("i", "<CR>", _12_)
+  local function _13_()
     return open_result("vsplit")
   end
-  keymap("i", "<C-l>", _15_)
-  local function _16_()
+  keymap("i", "<C-l>", _13_)
+  local function _14_()
     return open_result("split")
   end
-  keymap("i", "<C-s>", _16_)
-  local function _17_()
+  keymap("i", "<C-s>", _14_)
+  local function _15_()
     return open_result("tabedit")
   end
-  keymap("i", "<C-t>", _17_)
+  keymap("i", "<C-t>", _15_)
+  local function _16_()
+    return move_cursor(1)
+  end
+  keymap("i", "<C-j>", _16_)
+  local function _17_()
+    return move_cursor(-1)
+  end
+  keymap("i", "<C-k>", _17_)
   local function _18_()
     return move_cursor(1)
   end
-  keymap("i", "<C-j>", _18_)
+  keymap("i", "<Down>", _18_)
   local function _19_()
     return move_cursor(-1)
   end
-  keymap("i", "<C-k>", _19_)
+  keymap("i", "<Up>", _19_)
   local function _20_()
-    return move_cursor(1)
-  end
-  keymap("i", "<Down>", _20_)
-  local function _21_()
-    return move_cursor(-1)
-  end
-  keymap("i", "<Up>", _21_)
-  local function _22_()
     return move_cursor_page(true, true)
   end
-  keymap("i", "<C-u>", _22_)
-  local function _23_()
+  keymap("i", "<C-u>", _20_)
+  local function _21_()
     return move_cursor_page(false, true)
   end
-  keymap("i", "<C-d>", _23_)
-  local function _24_()
+  keymap("i", "<C-d>", _21_)
+  local function _22_()
     return move_cursor_page(true, false)
   end
-  keymap("i", "<PageUp>", _24_)
-  local function _25_()
+  keymap("i", "<PageUp>", _22_)
+  local function _23_()
     return move_cursor_page(false, false)
   end
-  keymap("i", "<PageDown>", _25_)
-  local function _26_()
+  keymap("i", "<PageDown>", _23_)
+  local function _24_()
     return set_cursor(1)
   end
-  keymap("i", "<Home>", _26_)
-  local function _27_()
+  keymap("i", "<Home>", _24_)
+  local function _25_()
     return set_cursor(api.nvim_buf_line_count(result_buf))
   end
-  keymap("i", "<End>", _27_)
+  keymap("i", "<End>", _25_)
   local match_ns = api.nvim_create_namespace("ufind/match")
   local virt_ns = api.nvim_create_namespace("ufind/virt")
+  local function use_hl_matches(matches)
+    api.nvim_buf_clear_namespace(result_buf, match_ns, 0, -1)
+    for i, _26_ in ipairs(matches) do
+      local _each_27_ = _26_
+      local _ = _each_27_[1]
+      local positions = _each_27_[2]
+      local _0 = _each_27_[3]
+      for _1, pos in ipairs(positions) do
+        api.nvim_buf_add_highlight(result_buf, match_ns, "UfindMatch", (i - 1), (pos - 1), pos)
+      end
+    end
+    return nil
+  end
+  local function use_virt_text(text)
+    api.nvim_buf_clear_namespace(input_buf, virt_ns, 0, -1)
+    return api.nvim_buf_set_extmark(input_buf, virt_ns, 0, -1, {virt_text = {{text, "Comment"}}, virt_text_pos = "right_align"})
+  end
+  local function get_query()
+    local _local_28_ = api.nvim_buf_get_lines(input_buf, 0, 1, true)
+    local query = _local_28_[1]
+    return query:sub((1 + #PROMPT))
+  end
   local function on_lines()
     local fzy = require("ufind.fzy")
     set_cursor(1)
     local matches
-    local function _28_(_241)
+    local function _29_(_241)
       return config["get-value"](_241)
     end
-    matches = fzy.filter(get_query(), vim.tbl_map(_28_, items))
-    local function _31_(_29_)
-      local _arg_30_ = _29_
-      local i = _arg_30_[1]
-      local positions = _arg_30_[2]
-      local score = _arg_30_[3]
-      return {data = items[i], score = score, positions = positions}
+    matches = fzy.filter(get_query(), vim.tbl_map(_29_, items))
+    local function _34_(_30_, _32_)
+      local _arg_31_ = _30_
+      local _ = _arg_31_[1]
+      local _0 = _arg_31_[2]
+      local score_a = _arg_31_[3]
+      local _arg_33_ = _32_
+      local _1 = _arg_33_[1]
+      local _2 = _arg_33_[2]
+      local score_b = _arg_33_[3]
+      return (score_a > score_b)
     end
-    results = vim.tbl_map(_31_, matches)
-    local function _32_(_241, _242)
-      return (_241.score > _242.score)
+    table.sort(matches, _34_)
+    local function _37_(_35_)
+      local _arg_36_ = _35_
+      local i = _arg_36_[1]
+      return config["get-display"](items[i])
     end
-    table.sort(results, _32_)
-    local function _33_(_241)
-      return config["get-display"](_241.data)
+    api.nvim_buf_set_lines(result_buf, 0, -1, true, vim.tbl_map(_37_, matches))
+    use_virt_text((#matches .. " / " .. #items))
+    use_hl_matches(matches)
+    do
+      local tbl_12_auto = {}
+      for match_idx, _38_ in ipairs(matches) do
+        local _each_39_ = _38_
+        local item_idx = _each_39_[1]
+        local _ = _each_39_[2]
+        local _0 = _each_39_[3]
+        local _40_, _41_ = match_idx, item_idx
+        if ((nil ~= _40_) and (nil ~= _41_)) then
+          local k_13_auto = _40_
+          local v_14_auto = _41_
+          tbl_12_auto[k_13_auto] = v_14_auto
+        else
+        end
+      end
+      match_to_item = tbl_12_auto
     end
-    api.nvim_buf_set_lines(result_buf, 0, -1, true, vim.tbl_map(_33_, results))
-    use_virt_text(virt_ns, (#results .. " / " .. #items))
-    return use_hl_matches(match_ns, results)
+    return nil
   end
   local on_lines0 = vim.schedule_wrap(on_lines)
   assert(api.nvim_buf_attach(input_buf, false, {on_lines = on_lines0}))

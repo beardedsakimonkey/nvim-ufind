@@ -92,9 +92,10 @@
   (local (input-buf result-buf) (create-bufs))
   (local (input-win result-win) (create-wins input-buf result-buf))
   (local auid (handle-vimresized input-win result-win))
-  ;; The data backing what's shown in the result window.
-  ;; Structure: { data: any, score: int, positions: array<int> }
-  (var results (->> items (vim.tbl_map #{:data $1 :score 0 :positions []})))
+  ;; Mapping from match index (essentially the line number of the selected
+  ;; result) to item index (the index of the corresponding item in  `items`).
+  ;; This is needed by `open-result` to pass the selected item to `on-complete`.
+  (var match-to-item {})
 
   (fn set-cursor [line]
     (api.nvim_win_set_cursor result-win [line 0]))
@@ -118,26 +119,10 @@
 
   (fn open-result [cmd]
     (local [row _] (api.nvim_win_get_cursor result-win))
+    (local item-idx (. match-to-item row))
+    (local item (. items item-idx))
     (cleanup)
-    (config.on-complete cmd (. results row :data)))
-
-  (fn use-hl-matches [ns results]
-    (api.nvim_buf_clear_namespace result-buf ns 0 -1)
-    (each [i result (ipairs results)]
-      (each [_ pos (ipairs result.positions)]
-        (api.nvim_buf_add_highlight result-buf ns :UfindMatch (- i 1) (- pos 1)
-                                    pos))))
-
-  (fn use-virt-text [ns text]
-    (api.nvim_buf_clear_namespace input-buf ns 0 -1)
-    (api.nvim_buf_set_extmark input-buf ns 0 -1
-                              {:virt_text [[text :Comment]]
-                               :virt_text_pos :right_align}))
-
-  (fn get-query []
-    (local [query] (api.nvim_buf_get_lines input-buf 0 1 true))
-    ;; Trim prompt from the query
-    (query:sub (+ 1 (length PROMPT))))
+    (config.on-complete cmd item))
 
   (fn keymap [mode lhs rhs]
     (vim.keymap.set mode lhs rhs {:nowait true :silent true :buffer input-buf}))
@@ -161,6 +146,24 @@
   (local match-ns (api.nvim_create_namespace :ufind/match))
   (local virt-ns (api.nvim_create_namespace :ufind/virt))
 
+  (fn use-hl-matches [matches]
+    (api.nvim_buf_clear_namespace result-buf match-ns 0 -1)
+    (each [i [_ positions _] (ipairs matches)]
+      (each [_ pos (ipairs positions)]
+        (api.nvim_buf_add_highlight result-buf match-ns :UfindMatch (- i 1)
+                                    (- pos 1) pos))))
+
+  (fn use-virt-text [text]
+    (api.nvim_buf_clear_namespace input-buf virt-ns 0 -1)
+    (api.nvim_buf_set_extmark input-buf virt-ns 0 -1
+                              {:virt_text [[text :Comment]]
+                               :virt_text_pos :right_align}))
+
+  (fn get-query []
+    (local [query] (api.nvim_buf_get_lines input-buf 0 1 true))
+    ;; Trim prompt from the query
+    (query:sub (+ 1 (length PROMPT))))
+
   (fn on-lines []
     (local fzy (require :ufind.fzy))
     ;; Reset cursor to top
@@ -168,20 +171,22 @@
     ;; Run the fuzzy filter
     (local matches
            (fzy.filter (get-query) (vim.tbl_map #(config.get-value $1) items)))
-    ;; Transform matches into `results`
-    (set results
-         (->> matches
-              (vim.tbl_map (fn [[i positions score]]
-                             {:data (. items i) : score : positions}))))
-    ;; Sort results
-    (table.sort results #(> $1.score $2.score))
-    ;; Render results
+    ;; Sort matches
+    (table.sort matches (fn [[_ _ score-a] [_ _ score-b]]
+                          (> score-a score-b)))
+    ;; Render matches
     (api.nvim_buf_set_lines result-buf 0 -1 true
-                            (vim.tbl_map #(config.get-display $1.data) results))
+                            (vim.tbl_map (fn [[i]]
+                                           (config.get-display (. items i)))
+                                         matches))
     ;; Render result count virtual text
-    (use-virt-text virt-ns (.. (length results) " / " (length items)))
+    (use-virt-text (.. (length matches) " / " (length items)))
     ;; Highlight matched characters
-    (use-hl-matches match-ns results))
+    (use-hl-matches matches)
+    ;; Update match index to item index mapping
+    (set match-to-item (collect [match-idx [item-idx _ _] (ipairs matches)]
+                         match-idx
+                         item-idx)))
 
   ;; `on_lines` can be called in various contexts wherein textlock could prevent
   ;; changing buffer contents and window layout. Use `schedule` to defer such
