@@ -53,29 +53,41 @@
   (vim.fn.prompt_setprompt input-buf PROMPT)
   (values input-buf result-buf))
 
-(fn open [source display cb]
+(fn open [source ?config]
   "The entrypoint for opening a finder window.
-  `source` is a sequential table of any type.
-  `display` is a function that converts an element of the `source` table into a string.
-  `cb` is a function that's called when selecting an item to open.
+  `source`: a sequential table of any type.
+  `config`: an optional table containing:
+    `display`: a function that converts an element of the `source` table into a string.
+    `cb`: a function that's called when selecting an item to open.
 
   More formally:
     type source = array<'a>
-    type display = 'a => string
-    type cmd = 'edit' | 'split' | 'vsplit' | 'tabedit'
-    type cb = (cmd, 'a) => nil
+    type config? = {
+      cb?: ('edit' | 'split' | 'vsplit' | 'tabedit', 'a) => nil,
+      display?: 'a => string,
+    }
 
   Example:
-    require'ufind'.open(['~/foo', '~/bar'],
-                        tostring,
-                        function(cmd, item)
-                          vim.cmd('edit ' .. item)
-                        end)"
+    require'ufind'.open(['~/foo', '~/bar'])
+
+    -- using a custom data structure
+    require'ufind'.open([{path='/home/blah/foo', label='foo'}],
+                        { display = function(item)
+                            return item.label
+                          end,
+                          cb = function(cmd, item)
+                            vim.cmd('edit ' .. item.path)
+                          end })"
+  (assert (= :table (type source)))
+  (local config-defaults
+         {:display #$1
+          :cb (fn [cmd item]
+                (vim.cmd (.. cmd " " (vim.fn.fnameescape item))))})
+  (local config (vim.tbl_extend :force config-defaults (or ?config {})))
   (local orig-win (api.nvim_get_current_win))
   (local (input-buf result-buf) (create-bufs))
   (local (input-win result-win) (create-wins input-buf result-buf))
   (local auid (handle-vimresized input-win result-win))
-  (assert (= :table (type source)))
   ;; The data backing what's shown in the result window.
   ;; Structure: { data: any, score: int, positions: array<int> }
   (var results (->> source (vim.tbl_map #{:data $1 :score 0 :positions []})))
@@ -103,7 +115,7 @@
   (fn open-result [cmd]
     (local [row _] (api.nvim_win_get_cursor result-win))
     (cleanup)
-    (cb cmd (. results row :data)))
+    (config.cb cmd (. results row :data)))
 
   (fn use-hl-matches [ns results]
     (api.nvim_buf_clear_namespace result-buf ns 0 -1)
@@ -150,7 +162,8 @@
     ;; Reset cursor to top
     (set-cursor 1)
     ;; Run the fuzzy filter
-    (local matches (fzy.filter (get-query) (vim.tbl_map #(display $1) source)))
+    (local matches
+           (fzy.filter (get-query) (vim.tbl_map #(config.display $1) source)))
     ;; Transform matches into `results`
     (set results
          (->> matches
@@ -160,7 +173,7 @@
     (table.sort results #(> $1.score $2.score))
     ;; Render results
     (api.nvim_buf_set_lines result-buf 0 -1 true
-                            (vim.tbl_map #(display $1.data) results))
+                            (vim.tbl_map #(config.display $1.data) results))
     ;; Render result count virtual text
     (use-virt-text virt-ns (.. (length results) " / " (length source)))
     ;; Highlight matched characters
