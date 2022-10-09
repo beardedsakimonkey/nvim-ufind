@@ -36,8 +36,8 @@ local function create_bufs()
   vim.fn.prompt_setprompt(input_buf, PROMPT)
   return input_buf, result_buf
 end
-local function open(source, _3fconfig)
-  assert(("table" == type(source)))
+local function open(items, _3fconfig)
+  assert(("table" == type(items)))
   local config_defaults
   local function _1_(_241)
     return _241
@@ -45,7 +45,7 @@ local function open(source, _3fconfig)
   local function _2_(cmd, item)
     return vim.cmd((cmd .. " " .. vim.fn.fnameescape(item)))
   end
-  config_defaults = {display = _1_, cb = _2_}
+  config_defaults = {["get-display"] = _1_, ["on-complete"] = _2_}
   local config = vim.tbl_extend("force", config_defaults, (_3fconfig or {}))
   local orig_win = api.nvim_get_current_win()
   local input_buf, result_buf = create_bufs()
@@ -55,7 +55,7 @@ local function open(source, _3fconfig)
   local function _3_(_241)
     return {data = _241, score = 0, positions = {}}
   end
-  results = vim.tbl_map(_3_, source)
+  results = vim.tbl_map(_3_, items)
   local function set_cursor(line)
     return api.nvim_win_set_cursor(result_win, {line, 0})
   end
@@ -109,7 +109,7 @@ local function open(source, _3fconfig)
     local row = _local_11_[1]
     local _ = _local_11_[2]
     cleanup()
-    return config.cb(cmd, results[row].data)
+    return config["on-complete"](cmd, results[row].data)
   end
   local function use_hl_matches(ns, results0)
     api.nvim_buf_clear_namespace(result_buf, ns, 0, -1)
@@ -196,15 +196,15 @@ local function open(source, _3fconfig)
     set_cursor(1)
     local matches
     local function _27_(_241)
-      return config.display(_241)
+      return config["get-display"](_241)
     end
-    matches = fzy.filter(get_query(), vim.tbl_map(_27_, source))
+    matches = fzy.filter(get_query(), vim.tbl_map(_27_, items))
     local function _30_(_28_)
       local _arg_29_ = _28_
       local i = _arg_29_[1]
       local positions = _arg_29_[2]
       local score = _arg_29_[3]
-      return {data = source[i], score = score, positions = positions}
+      return {data = items[i], score = score, positions = positions}
     end
     results = vim.tbl_map(_30_, matches)
     local function _31_(_241, _242)
@@ -212,10 +212,10 @@ local function open(source, _3fconfig)
     end
     table.sort(results, _31_)
     local function _32_(_241)
-      return config.display(_241.data)
+      return config["get-display"](_241.data)
     end
     api.nvim_buf_set_lines(result_buf, 0, -1, true, vim.tbl_map(_32_, results))
-    use_virt_text(virt_ns, (#results .. " / " .. #source))
+    use_virt_text(virt_ns, (#results .. " / " .. #items))
     return use_hl_matches(match_ns, results)
   end
   local on_lines0 = vim.schedule_wrap(on_lines)
