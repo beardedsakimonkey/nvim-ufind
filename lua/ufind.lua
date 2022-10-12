@@ -30,10 +30,16 @@ end
 
 local function create_wins(input_buf, result_buf)
   local input_win_layout, result_win_layout = get_win_layouts()
-  local input_win_config = vim.tbl_extend('force', {style = 'minimal'}, input_win_layout)
-  local input_win = api.nvim_open_win(input_buf, true, input_win_config)
-  local result_win_config = vim.tbl_extend('force', {style = 'minimal', focusable = false}, result_win_layout)
-  local result_win = api.nvim_open_win(result_buf, false, result_win_config)
+  local input_win = api.nvim_open_win(
+    input_buf,
+    true, -- enter
+    vim.tbl_extend('force', {style = 'minimal'}, input_win_layout)
+  )
+  local result_win = api.nvim_open_win(
+    result_buf,
+    false, -- enter
+    vim.tbl_extend('force', {style = 'minimal', focusable = false}, result_win_layout)
+  )
   vim.wo[result_win].cursorline = true
   vim.wo[result_win].winhighlight = 'CursorLine:PmenuSel'
   return input_win, result_win
@@ -47,8 +53,7 @@ local function handle_vimresized(input_win, result_win)
     api.nvim_win_set_config(result_win, result_win_layout)
     vim.wo[result_win].cursorline = true
   end
-  local auid = api.nvim_create_autocmd('VimResized', {callback = relayout})
-  return auid
+  return api.nvim_create_autocmd('VimResized', {callback = relayout})
 end
 
 local function create_bufs()
@@ -90,11 +95,12 @@ local config_defaults = {
 --                         end })
 local function open(items, config)
   assert(type(items) == 'table')
-  local config = vim.tbl_extend('force', {}, config_defaults, (config or {}))
+  local config = vim.tbl_extend('force', {}, config_defaults, config or {})
   local orig_win = api.nvim_get_current_win()
   local input_buf, result_buf = create_bufs()
   local input_win, result_win = create_wins(input_buf, result_buf)
-  local auid = handle_vimresized(input_win, result_win)
+  local vimresized_auid = handle_vimresized(input_win, result_win)
+  local bufleave_auid = nil
 
   -- Mapping from match index (essentially the line number of the selected
   -- result) to item index (the index of the corresponding item in  `items`).
@@ -119,11 +125,17 @@ local function open(items, config)
     move_cursor(offset)
   end
 
-  local function cleanup()
-    api.nvim_del_autocmd(auid)
+  local function quit()
+    api.nvim_del_autocmd(vimresized_auid)
+    if bufleave_auid then
+      api.nvim_del_autocmd(bufleave_auid) -- avoid re-entry of `quit`
+    end
     if api.nvim_buf_is_valid(input_buf)  then api.nvim_buf_delete(input_buf, {}) end
     if api.nvim_buf_is_valid(result_buf) then api.nvim_buf_delete(result_buf, {}) end
     if api.nvim_win_is_valid(orig_win)   then api.nvim_set_current_win(orig_win) end
+    -- Seems unneeded, but not sure why (deleting the buffer closes the window)
+    if api.nvim_win_is_valid(input_win)  then api.nvim_win_close(input_win, false) end
+    if api.nvim_win_is_valid(result_win) then api.nvim_win_close(result_win, false) end
   end
 
   local function open_result(cmd)
@@ -131,7 +143,7 @@ local function open(items, config)
     local row = cursor[1]
     local item_idx = match_to_item[row]
     local item = items[item_idx]
-    cleanup()
+    quit()
     return config.on_complete(cmd, item)
   end
 
@@ -139,7 +151,7 @@ local function open(items, config)
     return vim.keymap.set(mode, lhs, rhs, {nowait = true, silent = true, buffer = input_buf})
   end
 
-  keymap({'i', 'n'}, '<Esc>', cleanup) -- can use <C-c> to exit insert mode
+  keymap({'i', 'n'}, '<Esc>', quit) -- can use <C-c> to exit insert mode
   keymap('i', '<CR>', function() open_result('edit') end)
   keymap('i', '<C-l>', function() open_result('vsplit') end)
   keymap('i', '<C-s>', function() open_result('split') end)
@@ -214,7 +226,7 @@ local function open(items, config)
   -- NOTE: `on_lines` gets called immediately because of setting the prompt
   assert(api.nvim_buf_attach(input_buf, false, {on_lines = vim.schedule_wrap(on_lines)}))
   -- TODO: make this a better UX
-  api.nvim_create_autocmd('BufLeave', {buffer = input_buf, callback = cleanup})
+  bufleave_auid = api.nvim_create_autocmd('BufLeave', {buffer = input_buf, callback = quit})
   vim.cmd('startinsert')
 end
 
