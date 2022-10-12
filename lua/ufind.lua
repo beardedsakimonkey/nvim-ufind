@@ -100,7 +100,6 @@ local function open(items, config)
   local input_buf, result_buf = create_bufs()
   local input_win, result_win = create_wins(input_buf, result_buf)
   local vimresized_auid = handle_vimresized(input_win, result_win)
-  local bufleave_auid = nil
 
   -- Mapping from match index (essentially the line number of the selected
   -- result) to item index (the index of the corresponding item in  `items`).
@@ -127,9 +126,6 @@ local function open(items, config)
 
   local function quit()
     api.nvim_del_autocmd(vimresized_auid)
-    if bufleave_auid then
-      api.nvim_del_autocmd(bufleave_auid) -- avoid re-entry of `quit`
-    end
     if api.nvim_buf_is_valid(input_buf)  then api.nvim_buf_delete(input_buf, {}) end
     if api.nvim_buf_is_valid(result_buf) then api.nvim_buf_delete(result_buf, {}) end
     if api.nvim_win_is_valid(orig_win)   then api.nvim_set_current_win(orig_win) end
@@ -225,8 +221,6 @@ local function open(items, config)
   -- operations to the main loop.
   -- NOTE: `on_lines` gets called immediately because of setting the prompt
   assert(api.nvim_buf_attach(input_buf, false, {on_lines = vim.schedule_wrap(on_lines)}))
-  -- TODO: make this a better UX
-  bufleave_auid = api.nvim_create_autocmd('BufLeave', {buffer = input_buf, callback = quit})
   vim.cmd('startinsert')
 end
 
