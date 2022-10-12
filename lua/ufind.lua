@@ -60,7 +60,6 @@ local function create_bufs()
 end
 
 local config_defaults = {
-  get_display = function(item) return item end,
   get_value = function(item) return item end,
   on_complete = function(cmd, item) vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(item)) end,
 }
@@ -68,14 +67,12 @@ local config_defaults = {
 -- The entrypoint for opening a finder window.
 -- `items`: a sequential table of any type.
 -- `config`: an optional table containing:
---   `get_display`: a function that converts an item to a string to be displayed in the results window.
 --   `get_value`: a function that converts an item to a string to be passed to the fuzzy filterer.
 --   `on_complete`: a function that's called when selecting an item to open.
 --
 -- More formally:
 --   type items = array<'item>
 --   type config? = {
---     get_display?: 'item => string,
 --     get_value?: 'item => string,
 --     on_complete?: ('edit' | 'split' | 'vsplit' | 'tabedit', 'item) => nil,
 --   }
@@ -85,11 +82,11 @@ local config_defaults = {
 --
 --   -- using a custom data structure
 --   require'ufind'.open([{path='/home/blah/foo', label='foo'}],
---                       { get_display = function(item)
+--                       { get_value = function(item)
 --                           return item.label
 --                         end,
 --                         on_complete = function(cmd, item)
---                           vim.cmd('edit ' .. item.path)
+--                           vim.cmd(cmd .. item.path)
 --                         end })
 local function open(items, config)
   assert(type(items) == 'table')
@@ -111,8 +108,8 @@ local function open(items, config)
   local function move_cursor(offset)
     local cursor = api.nvim_win_get_cursor(result_win)
     local old_row = cursor[1]
-    local lines = api.nvim_buf_line_count(result_buf)
-    local new_row = math.max(math.min(old_row + offset, lines), 1)
+    local line_count = api.nvim_buf_line_count(result_buf)
+    local new_row = math.max(math.min(old_row + offset, line_count), 1)
     set_cursor(new_row)
   end
 
@@ -183,21 +180,21 @@ local function open(items, config)
     return query:sub(1 + #PROMPT)
   end
 
+  -- Stringified items
+  local item_values = vim.tbl_map(function(item)
+    return config.get_value(item)
+  end, items)
+
   local function on_lines()
     -- Reset cursor to top
     set_cursor(1)
     -- Run the fuzzy filter
-    local matches = require('ufind.fzy').filter(get_query(), vim.tbl_map(function(item)
-      return config.get_value(item)
-    end, items))
+    local matches = require('ufind.fzy').filter(get_query(), item_values)
     -- Sort matches
-    table.sort(matches, function(a, b)
-      return a[3] > b[3]
-    end)
+    table.sort(matches, function(a, b) return a[3] > b[3] end)
     -- Render matches
     api.nvim_buf_set_lines(result_buf, 0, -1, true, vim.tbl_map(function(match)
-      local i = match[1]
-      return config.get_display(items[i])
+      return item_values[match[1]]
     end, matches))
     -- Render result count virtual text
     use_virt_text(#matches .. ' / ' .. #items)
