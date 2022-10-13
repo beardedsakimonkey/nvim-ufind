@@ -66,6 +66,7 @@ end
 
 local config_defaults = {
   get_value = function(item) return item end,
+  get_highlights = nil,
   on_complete = function(cmd, item) vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(item)) end,
 }
 
@@ -73,20 +74,22 @@ local config_defaults = {
 -- `items`: a sequential table of any type.
 -- `config`: an optional table containing:
 --   `get_value`: a function that converts an item to a string to be passed to the fuzzy filterer.
+--   `get_highlights`: a function that returns highlight ranges to highlight the result line.
 --   `on_complete`: a function that's called when selecting an item to open.
 --
 -- More formally:
 --   type items = array<'item>
 --   type config? = {
 --     get_value?: 'item => string,
+--     get_highlights?: ('item, string) => ?array<{hl_group, col_start, col_end}>,
 --     on_complete?: ('edit' | 'split' | 'vsplit' | 'tabedit', 'item) => nil,
 --   }
 --
 -- Example:
---   require'ufind'.open(['~/foo', '~/bar'])
+--   require'ufind'.open({'~/foo', '~/bar'})
 --
 --   -- using a custom data structure
---   require'ufind'.open([{path='/home/blah/foo', label='foo'}],
+--   require'ufind'.open({{path='/home/blah/foo', label='foo'}},
 --                       { get_value = function(item)
 --                           return item.label
 --                         end,
@@ -164,14 +167,30 @@ local function open(items, config)
   keymap('i', '<End>', function() set_cursor(api.nvim_buf_line_count(result_buf)) end)
 
   local match_ns = api.nvim_create_namespace('ufind/match')
+  local line_ns = api.nvim_create_namespace('ufind/line')
   local virt_ns = api.nvim_create_namespace('ufind/virt')
+
+  local lines = vim.tbl_map(function(item)
+    return config.get_value(item)
+  end, items)
 
   local function use_hl_matches(matches)
     api.nvim_buf_clear_namespace(result_buf, match_ns, 0, -1)
     for i, match in ipairs(matches) do
       local positions = match[2]
       for _, pos in ipairs(positions) do
-        api.nvim_buf_add_highlight(result_buf, match_ns, 'UfindMatch', (i - 1), (pos - 1), pos)
+        api.nvim_buf_add_highlight(result_buf, match_ns, 'UfindMatch', i-1, pos-1, pos)
+      end
+    end
+  end
+
+  local function use_hl_lines(matches)
+    if not config.get_highlights then return end
+    api.nvim_buf_clear_namespace(result_buf, line_ns, 0, -1)
+    for i, match in ipairs(matches) do
+      local hls = config.get_highlights(items[match[1]], lines[match[1]])
+      for _, hl in ipairs(hls or {}) do
+        api.nvim_buf_add_highlight(result_buf, line_ns, hl[1], i-1, hl[2], hl[3])
       end
     end
   end
@@ -182,31 +201,27 @@ local function open(items, config)
   end
 
   local function get_query()
-    local lines = api.nvim_buf_get_lines(input_buf, 0, 1, true)
-    local query = lines[1]
+    local buf_lines = api.nvim_buf_get_lines(input_buf, 0, 1, true)
+    local query = buf_lines[1]
     -- Trim prompt from the query
     return query:sub(1 + #PROMPT)
   end
-
-  -- Stringified items
-  local item_values = vim.tbl_map(function(item)
-    return config.get_value(item)
-  end, items)
 
   local function on_lines()
     -- Reset cursor to top
     set_cursor(1)
     -- Run the fuzzy filter
-    local matches = require('ufind.fzy').filter(get_query(), item_values)
+    local matches = require('ufind.fzy').filter(get_query(), lines)
     -- Sort matches
     table.sort(matches, function(a, b) return a[3] > b[3] end)
     -- Render matches
     api.nvim_buf_set_lines(result_buf, 0, -1, true, vim.tbl_map(function(match)
-      return item_values[match[1]]
+      return lines[match[1]]
     end, matches))
     -- Render result count virtual text
     use_virt_text(#matches .. ' / ' .. #items)
-    -- Highlight matched characters
+    -- Highlight results
+    use_hl_lines(matches)
     use_hl_matches(matches)
     -- Update match index to item index mapping
     local new_match_to_item = {}
