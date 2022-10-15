@@ -32,12 +32,12 @@ assert_eq(
 
 assert_eq(
     filter({"x"}, {"x.lua", "y.lua"}),
-    {{index = 1, positions = {1}, score = 0}}
+    {{index = 1, positions = {1}, score = 1}}
 )
 
 assert_eq(
     filter({"fil", "foo"}, {"file.lua: print(foo)"}, ":"),
-    {{index = 1, positions = {1, 2, 3, 17, 18, 19}, score = 0}}
+    {{index = 1, positions = {1, 2, 3, 17, 18, 19}, score = 10}}
 )
 
 print("ok")

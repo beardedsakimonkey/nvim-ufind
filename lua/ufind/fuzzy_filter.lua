@@ -1,38 +1,45 @@
 local util = require('ufind.util')
 
--- TODO: give bonus to consecutive chars and start of word.
-local function calc_score(_positions, _text)
-    return 0
+local function calc_score(positions, str)
+    local tail = str:find('[^/]+/?$')
+    local score = 0
+    local prev_pos = -1
+    for _, pos in ipairs(positions) do
+        if pos == prev_pos + 1 then score = score + 1 end -- consecutive char
+        if tail and pos >= tail then score = score + 1 end -- path tail
+        prev_pos = pos
+    end
+    return score
 end
 
-local function fuzzy_match(text, queries)
-    if not text or #text == 0 or vim.tbl_isempty(queries) then return nil end
-    text = text:lower()
+local function fuzzy_match(str, queries)
+    if not str or #str == 0 or vim.tbl_isempty(queries) then return nil end
+    str = str:lower()
     local positions = {}
     for _, q in ipairs(queries) do
         q.term = q.term:lower()
         if q.prefix and q.suffix then
-            local match = text == q.term
+            local match = str == q.term
             if not q.invert and not match
                 or q.invert and match then
                 return nil
             end
         elseif q.prefix then
-            local match = vim.startswith(text, q.term)
+            local match = vim.startswith(str, q.term)
             if not q.invert and not match
                 or q.invert and match then
                 return nil
             end
         elseif q.suffix then
-            local match = vim.endswith(text, q.term)
+            local match = vim.endswith(str, q.term)
             if not q.invert and not match
                 or q.invert and match then
                 return nil
             end
         elseif q.invert then
-            if text:find(q.term, 1, true) then return nil end
+            if str:find(q.term, 1, true) then return nil end
         else
-            for _, v in ipairs(util.find_min_subsequence(text, q.term)) do
+            for _, v in ipairs(util.find_min_subsequence(str, q.term)) do
                 table.insert(positions, v)
             end
         end
@@ -40,7 +47,8 @@ local function fuzzy_match(text, queries)
     if vim.tbl_isempty(positions) then
         return nil
     else
-        return positions, calc_score(positions, text)
+        table.sort(positions) -- For calculating consecutive char bonus
+        return positions, calc_score(positions, str)
     end
 end
 
