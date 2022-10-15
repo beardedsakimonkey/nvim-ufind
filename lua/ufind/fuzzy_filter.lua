@@ -7,27 +7,36 @@ end
 
 local function fuzzy_match(text, queries)
     if not text or #text == 0 or vim.tbl_isempty(queries) then return nil end
-    local fuzzy_query = nil
-    for _, query in ipairs(queries) do
-        if query.prefix then
-            local has_match = vim.startswith(text, query.term)
-            if not query.invert and not has_match then return nil end
-            if query.invert and has_match then return nil end
-        end
-        if query.suffix then
-            local has_match = vim.endswith(text, query.term)
-            if not query.invert and not has_match then return nil end
-            if query.invert and has_match then return nil end
-        end
-        if query.invert and not query.prefix and not query.suffix then
-            local has_match = text:find(query.term, 1, true)
-            if has_match then return nil end
-        end
-        if not query.invert and not query.prefix and not query.suffix then
-            fuzzy_query = query.term
+    text = text:lower()
+    local positions = {}
+    for _, q in ipairs(queries) do
+        q.term = q.term:lower()
+        if q.prefix and q.suffix then
+            local match = text == q.term
+            if not q.invert and not match
+                or q.invert and match then
+                return nil
+            end
+        elseif q.prefix then
+            local match = vim.startswith(text, q.term)
+            if not q.invert and not match
+                or q.invert and match then
+                return nil
+            end
+        elseif q.suffix then
+            local match = vim.endswith(text, q.term)
+            if not q.invert and not match
+                or q.invert and match then
+                return nil
+            end
+        elseif q.invert then
+            if text:find(q.term, 1, true) then return nil end
+        else
+            for _, v in ipairs(util.find_min_subsequence(text, q.term)) do
+                table.insert(positions, v)
+            end
         end
     end
-    local positions = util.find_min_subsequence(text:lower(), fuzzy_query:lower())
     if vim.tbl_isempty(positions) then
         return nil
     else
@@ -88,6 +97,7 @@ local function filter(raw_queries, lines, delimiter)
         for line_part, start in util.gsplit(line, delimiter or '$', false) do
             local positions, score = fuzzy_match(line_part, query_sets[j])
             if positions then
+                -- Adjust positions
                 for _, pos in ipairs(positions) do
                     table.insert(match.positions, start-1+pos)
                 end
