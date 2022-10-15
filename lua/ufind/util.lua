@@ -21,7 +21,7 @@ local function gsplit(s, sep, plain)
     end
 
     return function()
-        if done or (s == '' and sep == '') then
+        if done or s == '' then
             return
         end
         if sep == '' then
