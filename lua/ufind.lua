@@ -68,6 +68,7 @@ local config_defaults = {
   get_value = function(item) return item end,
   get_highlights = nil,
   on_complete = function(cmd, item) vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(item)) end,
+  delimiter = '$',
 }
 
 -- The entrypoint for opening a finder window.
@@ -76,6 +77,7 @@ local config_defaults = {
 --   `get_value`: a function that converts an item to a string to be passed to the fuzzy filterer.
 --   `get_highlights`: a function that returns highlight ranges to highlight the result line.
 --   `on_complete`: a function that's called when selecting an item to open.
+--   `delimiter`: a pattern that breaks up lines into parts that can be separately queried.
 --
 -- More formally:
 --   type items = array<'item>
@@ -83,6 +85,7 @@ local config_defaults = {
 --     get_value?: 'item => string,
 --     get_highlights?: ('item, string) => ?array<{hl_group, col_start, col_end}>,
 --     on_complete?: ('edit' | 'split' | 'vsplit' | 'tabedit', 'item) => nil,
+--     delimiter?: string,
 --   }
 --
 -- Example:
@@ -210,7 +213,7 @@ local function open(items, config)
     -- Reset cursor to top
     set_cursor(1)
     -- Run the fuzzy filter
-    local matches = require('ufind.fuzzy_filter').filter({get_query()}, lines)
+    local matches = require('ufind.fuzzy_filter').filter({get_query()}, lines, config.delimiter)
     -- Sort matches
     table.sort(matches, function(a, b) return a.score > b.score end)
     -- Render matches

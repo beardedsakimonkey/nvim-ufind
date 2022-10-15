@@ -103,7 +103,7 @@ local function filter(raw_queries, lines, delimiter)
     for i, line in ipairs(lines) do
         local j = 1
         local match = {index = i, positions = {}, score = 0}
-        for line_part, start in util.gsplit(line, delimiter or '$', false) do
+        for line_part, start in util.gsplit(line, delimiter, false) do
             local query_set = query_sets[j]
             if not query_set or vim.tbl_isempty(query_set) then -- No query
                 table.insert(matches, match)
