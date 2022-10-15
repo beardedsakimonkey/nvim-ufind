@@ -177,8 +177,7 @@ local function open(items, config)
   local function use_hl_matches(matches)
     api.nvim_buf_clear_namespace(result_buf, match_ns, 0, -1)
     for i, match in ipairs(matches) do
-      local positions = match[2]
-      for _, pos in ipairs(positions) do
+      for _, pos in ipairs(match.positions) do
         api.nvim_buf_add_highlight(result_buf, match_ns, 'UfindMatch', i-1, pos-1, pos)
       end
     end
@@ -188,7 +187,7 @@ local function open(items, config)
     if not config.get_highlights then return end
     api.nvim_buf_clear_namespace(result_buf, line_ns, 0, -1)
     for i, match in ipairs(matches) do
-      local hls = config.get_highlights(items[match[1]], lines[match[1]])
+      local hls = config.get_highlights(items[match.index], lines[match.index])
       for _, hl in ipairs(hls or {}) do
         api.nvim_buf_add_highlight(result_buf, line_ns, hl[1], i-1, hl[2], hl[3])
       end
@@ -211,13 +210,12 @@ local function open(items, config)
     -- Reset cursor to top
     set_cursor(1)
     -- Run the fuzzy filter
-    local matches = require('ufind.fzy').filter(get_query(), lines)
-    -- local matches = require('ufind.fuzzy_filter').filter(get_query(), lines)
+    local matches = require('ufind.fuzzy_filter').filter({get_query()}, lines)
     -- Sort matches
-    table.sort(matches, function(a, b) return a[3] > b[3] end)
+    table.sort(matches, function(a, b) return a.score > b.score end)
     -- Render matches
     api.nvim_buf_set_lines(result_buf, 0, -1, true, vim.tbl_map(function(match)
-      return lines[match[1]]
+      return lines[match.index]
     end, matches))
     -- Render result count virtual text
     use_virt_text(#matches .. ' / ' .. #items)
@@ -226,8 +224,8 @@ local function open(items, config)
     use_hl_matches(matches)
     -- Update match index to item index mapping
     local new_match_to_item = {}
-    for match_idx, match in ipairs(matches) do
-      new_match_to_item[match_idx] = match[1]
+    for i, match in ipairs(matches) do
+      new_match_to_item[i] = match.index
     end
     match_to_item = new_match_to_item
   end

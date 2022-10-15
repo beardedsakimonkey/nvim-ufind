@@ -89,6 +89,7 @@ local function filter(raw_queries, lines, delimiter)
     local matches = {}
     -- Parse queries
     local query_sets = vim.tbl_map(function(raw_query)
+        if raw_query:match('^%s*$') then return nil end
         local query_set = {}
         for query_part in vim.gsplit(raw_query, " +") do
             table.insert(query_set, parse_query(query_part)) -- Inserting `nil` no-ops
@@ -103,13 +104,18 @@ local function filter(raw_queries, lines, delimiter)
         local j = 1
         local match = {index = i, positions = {}, score = 0}
         for line_part, start in util.gsplit(line, delimiter or '$', false) do
-            local positions, score = fuzzy_match(line_part, query_sets[j])
-            if positions then
-                -- Adjust positions
-                for _, pos in ipairs(positions) do
-                    table.insert(match.positions, start-1+pos)
+            local query_set = query_sets[j]
+            if not query_set or vim.tbl_isempty(query_set) then -- No query
+                table.insert(matches, match)
+            else -- Has query
+                local positions, score = fuzzy_match(line_part, query_set)
+                if positions then
+                    -- Adjust positions
+                    for _, pos in ipairs(positions) do
+                        table.insert(match.positions, start-1+pos)
+                    end
+                    match.score = match.score + score
                 end
-                match.score = match.score + score
             end
             j = j + 1
         end
