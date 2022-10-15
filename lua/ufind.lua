@@ -212,6 +212,7 @@ local function open(items, config)
     set_cursor(1)
     -- Run the fuzzy filter
     local matches = require('ufind.fzy').filter(get_query(), lines)
+    -- local matches = require('ufind.fuzzy_filter').filter(get_query(), lines)
     -- Sort matches
     table.sort(matches, function(a, b) return a[3] > b[3] end)
     -- Render matches
@@ -235,7 +236,7 @@ local function open(items, config)
   -- changing buffer contents and window layout. Use `schedule` to defer such
   -- operations to the main loop.
   -- NOTE: `on_lines` gets called immediately because of setting the prompt
-  assert(api.nvim_buf_attach(input_buf, false, {on_lines = vim.schedule_wrap(on_lines)}))
+  api.nvim_buf_attach(input_buf, false, {on_lines = vim.schedule_wrap(on_lines)})
   vim.cmd('startinsert')
 end
 
