@@ -6,7 +6,7 @@ local find_min_subsequence = util.find_min_subsequence
 local function asserteq(a, b)
     assert(
         vim.deep_equal(a, b),
-        string.format("Expected %s to equal %s", vim.inspect(a), vim.inspect(b))
+        string.format('Expected %s to equal %s', vim.inspect(a), vim.inspect(b))
     )
 end
 
@@ -31,13 +31,13 @@ asserteq(
 )
 
 asserteq(
-    filter({"x"}, {"x.lua", "y.lua"}),
+    filter({'x'}, {'x.lua', 'y.lua'}, '$'),
     {{index = 1, positions = {1}, score = 1}}
 )
 
 asserteq(
-    filter({"fil", "foo"}, {"file.lua: print(foo)"}, ":"),
+    filter({'fil', 'foo'}, {'file.lua: print(foo)'}, ':'),
     {{index = 1, positions = {1, 2, 3, 17, 18, 19}, score = 10}}
 )
 
-print("ok")
+print('ok')

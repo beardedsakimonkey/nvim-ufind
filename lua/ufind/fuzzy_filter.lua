@@ -54,7 +54,7 @@ end
 
 local function parse_query(query_part)
     local invert, prefix, suffix = false, false, false
-    local ts, te = 1, -1 -- Start/end indices of the search term
+    local ts, te = 1, -1 -- Term start/end
     if query_part:sub(ts, ts) == '!' then
         ts = ts + 1
         invert = true
@@ -100,10 +100,12 @@ local function filter(raw_queries, lines, delimiter)
     for _, queries in ipairs(query_sets) do
         sort_queries(queries)
     end
+    local num_groups = 1
     for i, line in ipairs(lines) do
         local j = 1
         local match = {index = i, positions = {}, score = 0}
         for line_part, start in util.gsplit(line, delimiter, false) do
+            num_groups = math.max(j, num_groups)
             local query_set = query_sets[j]
             if not query_set or vim.tbl_isempty(query_set) then -- No query
                 table.insert(matches, match)
@@ -123,7 +125,7 @@ local function filter(raw_queries, lines, delimiter)
             table.insert(matches, match)
         end
     end
-    return matches
+    return matches, num_groups
 end
 
 return {filter = filter}

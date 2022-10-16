@@ -56,12 +56,11 @@ local function handle_vimresized(input_win, result_win)
   return api.nvim_create_autocmd('VimResized', {callback = relayout})
 end
 
-local function create_bufs()
-  local input_buf = api.nvim_create_buf(false, true)
-  local result_buf = api.nvim_create_buf(false, true)
-  vim.bo[input_buf].buftype = 'prompt'
-  vim.fn.prompt_setprompt(input_buf, PROMPT)
-  return input_buf, result_buf
+local function create_input_buf()
+  local buf = api.nvim_create_buf(false, true)
+  vim.bo[buf].buftype = 'prompt'
+  vim.fn.prompt_setprompt(buf, PROMPT)
+  return buf
 end
 
 local config_defaults = {
@@ -103,7 +102,8 @@ local function open(items, config)
   assert(type(items) == 'table')
   local config = vim.tbl_extend('force', {}, config_defaults, config or {})
   local orig_win = api.nvim_get_current_win()
-  local input_buf, result_buf = create_bufs()
+  local input_buf = create_input_buf()
+  local result_buf = api.nvim_create_buf(false, true)
   local input_win, result_win = create_wins(input_buf, result_buf)
   local vimresized_auid = handle_vimresized(input_win, result_win)
 
@@ -111,6 +111,22 @@ local function open(items, config)
   -- result) to item index (the index of the corresponding item in  `items`).
   -- This is needed by `open_result` to pass the selected item to `on_complete`.
   local match_to_item = {}
+
+  -- State for multiple input_bufs when using a delimiter.
+  local cur_input = 1
+  local input_bufs = {input_buf}
+
+  local function switch_input_buf(offset)
+    local i = cur_input + offset
+    if i > #input_bufs then
+      cur_input = 1
+    elseif i < 1 then
+      cur_input = #input_bufs
+    else
+      cur_input = i
+    end
+    api.nvim_win_set_buf(input_win, input_bufs[cur_input])
+  end
 
   local function set_cursor(line)
     api.nvim_win_set_cursor(result_win, {line, 0})
@@ -132,7 +148,9 @@ local function open(items, config)
 
   local function quit()
     api.nvim_del_autocmd(vimresized_auid)
-    if api.nvim_buf_is_valid(input_buf)  then api.nvim_buf_delete(input_buf, {}) end
+    for _, buf in ipairs(input_bufs) do
+      if api.nvim_buf_is_valid(buf) then api.nvim_buf_delete(buf, {}) end
+    end
     if api.nvim_buf_is_valid(result_buf) then api.nvim_buf_delete(result_buf, {}) end
     if api.nvim_win_is_valid(orig_win)   then api.nvim_set_current_win(orig_win) end
     -- Seems unneeded, but not sure why (deleting the buffer closes the window)
@@ -148,26 +166,6 @@ local function open(items, config)
     quit()
     return config.on_complete(cmd, item)
   end
-
-  local function keymap(mode, lhs, rhs)
-    return vim.keymap.set(mode, lhs, rhs, {nowait = true, silent = true, buffer = input_buf})
-  end
-
-  keymap({'i', 'n'}, '<Esc>', quit) -- can use <C-c> to exit insert mode
-  keymap('i', '<CR>', function() open_result('edit') end)
-  keymap('i', '<C-l>', function() open_result('vsplit') end)
-  keymap('i', '<C-s>', function() open_result('split') end)
-  keymap('i', '<C-t>', function() open_result('tabedit') end)
-  keymap('i', '<C-j>', function() move_cursor(1) end)
-  keymap('i', '<C-k>', function() move_cursor(-1) end)
-  keymap('i', '<Down>', function() move_cursor(1) end)
-  keymap('i', '<Up>', function() move_cursor(-1) end)
-  keymap('i', '<C-u>', function() move_cursor_page(true,  true) end)
-  keymap('i', '<C-d>', function() move_cursor_page(false, true) end)
-  keymap('i', '<PageUp>', function() move_cursor_page(true,  false) end)
-  keymap('i', '<PageDown>', function() move_cursor_page(false, false) end)
-  keymap('i', '<Home>', function() set_cursor(1) end)
-  keymap('i', '<End>', function() set_cursor(api.nvim_buf_line_count(result_buf)) end)
 
   local match_ns = api.nvim_create_namespace('ufind/match')
   local line_ns = api.nvim_create_namespace('ufind/line')
@@ -198,22 +196,25 @@ local function open(items, config)
   end
 
   local function use_virt_text(text)
-    api.nvim_buf_clear_namespace(input_buf, virt_ns, 0, -1)
-    api.nvim_buf_set_extmark(input_buf, virt_ns, 0, -1, {virt_text = {{text, 'Comment'}}, virt_text_pos = 'right_align'})
+    for _, buf in ipairs(input_bufs) do
+      api.nvim_buf_clear_namespace(buf, virt_ns, 0, -1)
+      api.nvim_buf_set_extmark(buf, virt_ns, 0, -1, {virt_text = {{text, 'Comment'}}, virt_text_pos = 'right_align'})
+    end
   end
 
-  local function get_query()
-    local buf_lines = api.nvim_buf_get_lines(input_buf, 0, 1, true)
+  local function get_cur_query(buf)
+    local buf_lines = api.nvim_buf_get_lines(buf, 0, 1, true)
     local query = buf_lines[1]
+    local prompt = vim.fn.prompt_getprompt(buf)
     -- Trim prompt from the query
-    return query:sub(1 + #PROMPT)
+    return query:sub(1 + #prompt)
   end
 
-  local function on_lines()
-    -- Reset cursor to top
-    set_cursor(1)
-    -- Run the fuzzy filter
-    local matches = require('ufind.fuzzy_filter').filter({get_query()}, lines, config.delimiter)
+  local function get_queries()
+    return vim.tbl_map(get_cur_query, input_bufs)
+  end
+
+  local function render(matches)
     -- Sort matches
     table.sort(matches, function(a, b) return a.score > b.score end)
     -- Render matches
@@ -233,11 +234,59 @@ local function open(items, config)
     match_to_item = new_match_to_item
   end
 
-  -- `on_lines` can be called in various contexts wherein textlock could prevent
-  -- changing buffer contents and window layout. Use `schedule` to defer such
-  -- operations to the main loop.
-  -- NOTE: `on_lines` gets called immediately because of setting the prompt
-  api.nvim_buf_attach(input_buf, false, {on_lines = vim.schedule_wrap(on_lines)})
+  local function on_lines()
+    -- Reset cursor to top
+    set_cursor(1)
+    -- Run the fuzzy filter
+    local matches = require('ufind.fuzzy_filter').filter(get_queries(), lines, config.delimiter)
+    render(matches)
+  end
+
+  local matches, num_groups = require('ufind.fuzzy_filter').filter(get_queries(), lines, config.delimiter)
+
+  -- Create extra input buffers
+  for _ = 2, num_groups do
+    local buf = create_input_buf()
+    table.insert(input_bufs, buf)
+  end
+
+  -- Set prompts
+  for i = 1, #input_bufs do
+    local prompt = i .. '/' .. num_groups .. PROMPT
+    vim.fn.prompt_setprompt(input_bufs[i], prompt)
+  end
+
+  -- Set keymaps and subscribe to on_lines
+  for i = 1, #input_bufs do
+    local function keymap(mode, lhs, rhs)
+      return vim.keymap.set(mode, lhs, rhs, {nowait = true, silent = true, buffer = input_bufs[i]})
+    end
+    keymap({'i', 'n'}, '<Esc>', quit) -- can use <C-c> to exit insert mode
+    keymap('i', '<CR>', function() open_result('edit') end)
+    keymap('i', '<C-l>', function() open_result('vsplit') end)
+    keymap('i', '<C-s>', function() open_result('split') end)
+    keymap('i', '<C-t>', function() open_result('tabedit') end)
+    keymap('i', '<C-j>', function() move_cursor(1) end)
+    keymap('i', '<C-k>', function() move_cursor(-1) end)
+    keymap('i', '<Down>', function() move_cursor(1) end)
+    keymap('i', '<Up>', function() move_cursor(-1) end)
+    keymap('i', '<C-u>', function() move_cursor_page(true,  true) end)
+    keymap('i', '<C-d>', function() move_cursor_page(false, true) end)
+    keymap('i', '<PageUp>', function() move_cursor_page(true,  false) end)
+    keymap('i', '<PageDown>', function() move_cursor_page(false, false) end)
+    keymap('i', '<Home>', function() set_cursor(1) end)
+    keymap('i', '<End>', function() set_cursor(api.nvim_buf_line_count(result_buf)) end)
+    keymap('i', '<C-n>', function() switch_input_buf(1) end)
+    keymap('i', '<C-p>', function() switch_input_buf(-1) end)
+
+    -- `on_lines` can be called in various contexts wherein textlock could prevent
+    -- changing buffer contents and window layout. Use `schedule` to defer such
+    -- operations to the main loop.
+    -- NOTE: `on_lines` gets called immediately because of setting the prompt
+    api.nvim_buf_attach(input_bufs[i], false, {on_lines = vim.schedule_wrap(on_lines)})
+  end
+
+  render(matches)
   vim.cmd('startinsert')
 end
 
