@@ -27,7 +27,7 @@ asserteq(
 
 asserteq(
     find_min_subsequence('~/foo/bar/frodo.txt', 'to'),
-    {}
+    nil
 )
 
 asserteq(
@@ -38,6 +38,11 @@ asserteq(
 asserteq(
     filter({'fil', 'foo'}, {'file.lua: print(foo)'}, ':'),
     {{index = 1, positions = {1, 2, 3, 17, 18, 19}, score = 10}}
+)
+
+asserteq(
+    filter({'lua$', 'a'}, {'file.lua: a', 'file.c: x'}, ':'),
+    {{index = 1, positions = {11}, score = 1}}
 )
 
 print('ok')

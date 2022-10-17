@@ -74,7 +74,11 @@ local function find_min_subsequence(str, chars)
         c = 1
         s = new_min.start_index + 1
     end
-    return seq.start_index == nil and {} or seq.positions
+    if seq.start_index == nil then
+        return nil
+    else
+        return seq.positions
+    end
 end
 
 return {

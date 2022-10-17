@@ -12,6 +12,7 @@ local function calc_score(positions, str)
     return score
 end
 
+-- precondition: has queries
 local function fuzzy_match(str, queries)
     if not str or #str == 0 or vim.tbl_isempty(queries) then return nil end
     str = str:lower()
@@ -39,13 +40,15 @@ local function fuzzy_match(str, queries)
         elseif q.invert then
             if str:find(q.term, 1, true) then return nil end
         else
-            for _, v in ipairs(util.find_min_subsequence(str, q.term)) do
-                table.insert(positions, v)
+            local results = util.find_min_subsequence(str, q.term)
+            if not results then return nil end
+            for _, pos in ipairs(results) do
+                table.insert(positions, pos)
             end
         end
     end
     if vim.tbl_isempty(positions) then
-        return nil
+        return positions, 0
     else
         table.sort(positions) -- For calculating consecutive char bonus
         return positions, calc_score(positions, str)
@@ -101,28 +104,48 @@ local function filter(raw_queries, lines, delimiter)
         sort_queries(queries)
     end
     local num_groups = 1
+
+    local has_any_query = false
+    for _, query_set in ipairs(query_sets) do
+        if not vim.tbl_isempty(query_set) then
+            has_any_query = true
+        end
+    end
+
     for i, line in ipairs(lines) do
         local j = 1
-        local match = {index = i, positions = {}, score = 0}
-        for line_part, start in util.gsplit(line, delimiter, false) do
-            num_groups = math.max(j, num_groups)
-            local query_set = query_sets[j]
-            if not query_set or vim.tbl_isempty(query_set) then -- No query
-                table.insert(matches, match)
-            else -- Has query
-                local positions, score = fuzzy_match(line_part, query_set)
-                if positions then
-                    -- Adjust positions
-                    for _, pos in ipairs(positions) do
-                        table.insert(match.positions, start-1+pos)
-                    end
-                    match.score = match.score + score
-                end
-            end
-            j = j + 1
-        end
-        if not vim.tbl_isempty(match.positions) then
+        local match = {index = i, positions = nil, score = 0}
+        if not has_any_query then
+            match.positions = {}
             table.insert(matches, match)
+            for _, _ in util.gsplit(line, delimiter, false) do
+                num_groups = math.max(j, num_groups)
+                j = j + 1
+            end
+        else -- Has at least one query
+            for line_part, start in util.gsplit(line, delimiter, false) do
+                num_groups = math.max(j, num_groups)
+                local query_set = query_sets[j]
+                if query_set and not vim.tbl_isempty(query_set) then -- Has query
+                    local positions, score = fuzzy_match(line_part, query_set)
+                    if positions then
+                        match.positions = match.positions or {}
+                        -- Adjust positions
+                        for _, pos in ipairs(positions) do
+                            table.insert(match.positions, start-1+pos)
+                        end
+                        match.score = match.score + score
+                    else
+                        -- Query failed to match, so stop checking line_parts
+                        match.positions = nil
+                        break
+                    end
+                end
+                j = j + 1
+            end
+            if match.positions then
+                table.insert(matches, match)
+            end
         end
     end
     return matches, num_groups
