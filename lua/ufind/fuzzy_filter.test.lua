@@ -45,4 +45,20 @@ asserteq(
     {{index = 1, positions = {11}, score = 1}}
 )
 
+asserteq(
+    filter({'', 'zxczxc'}, {'file: a', 'file: x'}, ':'),
+    {}
+)
+
+asserteq(
+    filter({'', 'zxc'}, {'file: zxc', 'file: x'}, ':'),
+    {{index = 1, positions = {7, 8, 9}, score = 5}}
+)
+
+asserteq(
+    filter({'', '', 'sub'}, {'file: s:sub()', 'file: x'}, ':'),
+    {{index = 1, positions = {9, 10, 11}, score = 5},
+     {index = 2, positions = {}, score = 0}}
+)
+
 print('ok')
