@@ -81,7 +81,17 @@ local function find_min_subsequence(str, chars)
     end
 end
 
+local function tbl_some(fn, t)
+    for _, v in ipairs(t) do
+        if fn(v) then
+            return true
+        end
+    end
+    return false
+end
+
 return {
     gsplit = gsplit,
     find_min_subsequence = find_min_subsequence,
+    tbl_some = tbl_some,
 }

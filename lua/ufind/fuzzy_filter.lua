@@ -85,9 +85,7 @@ local function sort_queries(queries)
     end)
 end
 
-local function filter(raw_queries, lines, delimiter)
-    local matches = {}
-    -- Parse queries
+local function parse_queries(raw_queries)
     local query_sets = vim.tbl_map(function(raw_query)
         if raw_query:match('^%s*$') then -- is empty
             return {}
@@ -102,14 +100,18 @@ local function filter(raw_queries, lines, delimiter)
     for _, queries in ipairs(query_sets) do
         sort_queries(queries)
     end
-    local num_groups = 1
+    return query_sets
+end
 
-    local has_any_query = false
-    for _, query_set in ipairs(query_sets) do
-        if not vim.tbl_isempty(query_set) then
-            has_any_query = true
-        end
-    end
+local function filter(raw_queries, lines, delimiter)
+    local query_sets = parse_queries(raw_queries)
+
+    local has_any_query = util.tbl_some(function(queries)
+        return not vim.tbl_isempty(queries)
+    end, query_sets)
+
+    local num_groups = 1
+    local matches = {}
 
     for i, line in ipairs(lines) do
         local j = 1
