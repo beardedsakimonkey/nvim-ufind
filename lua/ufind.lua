@@ -2,6 +2,14 @@ local api = vim.api
 
 local PROMPT = '> '
 
+local function clamp(v, min, max)
+  return math.min(math.max(v, min), max)
+end
+
+local function keymap(buf, mode, lhs, rhs)
+  vim.keymap.set(mode, lhs, rhs, {nowait = true, silent = true, buffer = buf})
+end
+
 local function get_win_layouts()
   -- Size of the window
   local height = math.floor(vim.go.lines * 0.8)
@@ -100,7 +108,7 @@ local config_defaults = {
 --                         end })
 local function open(items, config)
   assert(type(items) == 'table')
-  local config = vim.tbl_extend('force', {}, config_defaults, config or {})
+  config = vim.tbl_extend('force', {}, config_defaults, config or {})
   local orig_win = api.nvim_get_current_win()
   local input_buf = create_input_buf()
   local result_buf = api.nvim_create_buf(false, true)
@@ -116,7 +124,8 @@ local function open(items, config)
   local cur_input = 1
   local input_bufs = {input_buf}
 
-  local function switch_input_buf(offset)
+  local function switch_input_buf(is_forward)
+    local offset = is_forward and 1 or -1
     local i = cur_input + offset
     if i > #input_bufs then
       cur_input = 1
@@ -136,7 +145,7 @@ local function open(items, config)
     local cursor = api.nvim_win_get_cursor(result_win)
     local old_row = cursor[1]
     local line_count = api.nvim_buf_line_count(result_buf)
-    local new_row = math.max(math.min(old_row + offset, line_count), 1)
+    local new_row = clamp(old_row+offset, 1, line_count)
     set_cursor(new_row)
   end
 
@@ -163,7 +172,7 @@ local function open(items, config)
     local row = cursor[1]
     local item_idx = match_to_item[row]
     local item = items[item_idx]
-    quit()
+    quit() -- cleanup first in case `on_complete` opens another finder
     return config.on_complete(cmd, item)
   end
 
@@ -172,6 +181,7 @@ local function open(items, config)
   local virt_ns = api.nvim_create_namespace('ufind/virt')
 
   local lines = vim.tbl_map(function(item)
+    -- TODO: warn on nil?
     return config.get_value(item)
   end, items)
 
@@ -202,16 +212,13 @@ local function open(items, config)
     end
   end
 
-  local function get_cur_query(buf)
-    local buf_lines = api.nvim_buf_get_lines(buf, 0, 1, true)
-    local query = buf_lines[1]
-    local prompt = vim.fn.prompt_getprompt(buf)
-    -- Trim prompt from the query
-    return query:sub(1 + #prompt)
-  end
-
   local function get_queries()
-    return vim.tbl_map(get_cur_query, input_bufs)
+    return vim.tbl_map(function(buf)
+      local buf_lines = api.nvim_buf_get_lines(buf, 0, 1, true)
+      local query = buf_lines[1]
+      local prompt = vim.fn.prompt_getprompt(buf)
+      return query:sub(1 + #prompt) -- trim prompt from the query
+    end, input_bufs)
   end
 
   local function render(matches)
@@ -258,26 +265,24 @@ local function open(items, config)
 
   -- Set keymaps and subscribe to on_lines
   for i = 1, #input_bufs do
-    local function keymap(mode, lhs, rhs)
-      return vim.keymap.set(mode, lhs, rhs, {nowait = true, silent = true, buffer = input_bufs[i]})
-    end
-    keymap({'i', 'n'}, '<Esc>', quit) -- can use <C-c> to exit insert mode
-    keymap('i', '<CR>', function() open_result('edit') end)
-    keymap('i', '<C-l>', function() open_result('vsplit') end)
-    keymap('i', '<C-s>', function() open_result('split') end)
-    keymap('i', '<C-t>', function() open_result('tabedit') end)
-    keymap('i', '<C-j>', function() move_cursor(1) end)
-    keymap('i', '<C-k>', function() move_cursor(-1) end)
-    keymap('i', '<Down>', function() move_cursor(1) end)
-    keymap('i', '<Up>', function() move_cursor(-1) end)
-    keymap('i', '<C-u>', function() move_cursor_page(true,  true) end)
-    keymap('i', '<C-d>', function() move_cursor_page(false, true) end)
-    keymap('i', '<PageUp>', function() move_cursor_page(true,  false) end)
-    keymap('i', '<PageDown>', function() move_cursor_page(false, false) end)
-    keymap('i', '<Home>', function() set_cursor(1) end)
-    keymap('i', '<End>', function() set_cursor(api.nvim_buf_line_count(result_buf)) end)
-    keymap('i', '<C-n>', function() switch_input_buf(1) end)
-    keymap('i', '<C-p>', function() switch_input_buf(-1) end)
+    local buf = input_bufs[i]
+    keymap(buf, {'i', 'n'}, '<Esc>', quit) -- can use <C-c> to exit insert mode
+    keymap(buf, 'i', '<CR>', function() open_result('edit') end)
+    keymap(buf, 'i', '<C-l>', function() open_result('vsplit') end)
+    keymap(buf, 'i', '<C-s>', function() open_result('split') end)
+    keymap(buf, 'i', '<C-t>', function() open_result('tabedit') end)
+    keymap(buf, 'i', '<C-j>', function() move_cursor(1) end)
+    keymap(buf, 'i', '<C-k>', function() move_cursor(-1) end)
+    keymap(buf, 'i', '<Down>', function() move_cursor(1) end)
+    keymap(buf, 'i', '<Up>', function() move_cursor(-1) end)
+    keymap(buf, 'i', '<C-f>', function() move_cursor_page(true,  true) end)
+    keymap(buf, 'i', '<C-b>', function() move_cursor_page(false, true) end)
+    keymap(buf, 'i', '<PageUp>', function() move_cursor_page(true,  false) end)
+    keymap(buf, 'i', '<PageDown>', function() move_cursor_page(false, false) end)
+    keymap(buf, 'i', '<Home>', function() set_cursor(1) end)
+    keymap(buf, 'i', '<End>', function() set_cursor(api.nvim_buf_line_count(result_buf)) end)
+    keymap(buf, 'i', '<C-n>', function() switch_input_buf(true) end)
+    keymap(buf, 'i', '<C-p>', function() switch_input_buf(false) end)
 
     -- `on_lines` can be called in various contexts wherein textlock could prevent
     -- changing buffer contents and window layout. Use `schedule` to defer such
