@@ -158,7 +158,7 @@ local function open(items, config)
   local function quit()
     api.nvim_del_autocmd(vimresized_auid)
     for _, buf in ipairs(input_bufs) do
-      if api.nvim_buf_is_valid(buf) then api.nvim_buf_delete(buf, {}) end
+      if api.nvim_buf_is_valid(buf) then api.nvim_buf_delete(buf, {force = true}) end
     end
     if api.nvim_buf_is_valid(result_buf) then api.nvim_buf_delete(result_buf, {}) end
     if api.nvim_win_is_valid(orig_win)   then api.nvim_set_current_win(orig_win) end
