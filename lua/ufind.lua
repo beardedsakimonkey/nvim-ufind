@@ -75,7 +75,7 @@ local config_defaults = {
   get_value = function(item) return item end,
   get_highlights = nil,
   on_complete = function(cmd, item) vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(item)) end,
-  delimiter = '$',
+  get_iter = function(line) return ipairs({line}) end,
 }
 
 -- The entrypoint for opening a finder window.
@@ -84,7 +84,7 @@ local config_defaults = {
 --   `get_value`: a function that converts an item to a string to be passed to the fuzzy filterer.
 --   `get_highlights`: a function that returns highlight ranges to highlight the result line.
 --   `on_complete`: a function that's called when selecting an item to open.
---   `delimiter`: a pattern that breaks up lines into parts that can be separately queried.
+--   `get_iter`: a function that returns an iterator that breaks up lines into parts that are queried individually.
 --
 -- More formally:
 --   type items = array<'item>
@@ -92,7 +92,7 @@ local config_defaults = {
 --     get_value?: 'item => string,
 --     get_highlights?: ('item, string) => ?array<{hl_group, col_start, col_end}>,
 --     on_complete?: ('edit' | 'split' | 'vsplit' | 'tabedit', 'item) => nil,
---     delimiter?: string,
+--     get_iter?: (string) => (() => number, string),
 --   }
 --
 -- Example:
@@ -120,7 +120,7 @@ local function open(items, config)
   -- This is needed by `open_result` to pass the selected item to `on_complete`.
   local match_to_item = {}
 
-  -- State for multiple input_bufs when using a delimiter.
+  -- State for multiple input_bufs when using `get_iter`.
   local cur_input = 1
   local input_bufs = {input_buf}
 
@@ -208,7 +208,10 @@ local function open(items, config)
   local function use_virt_text(text)
     for _, buf in ipairs(input_bufs) do
       api.nvim_buf_clear_namespace(buf, virt_ns, 0, -1)
-      api.nvim_buf_set_extmark(buf, virt_ns, 0, -1, {virt_text = {{text, 'Comment'}}, virt_text_pos = 'right_align'})
+      api.nvim_buf_set_extmark(buf, virt_ns, 0, -1, {
+        virt_text = {{text, 'Comment'}},
+        virt_text_pos = 'right_align'
+      })
     end
   end
 
@@ -245,11 +248,11 @@ local function open(items, config)
     -- Reset cursor to top
     set_cursor(1)
     -- Run the fuzzy filter
-    local matches = require('ufind.fuzzy_filter').filter(get_queries(), lines, config.delimiter)
+    local matches = require('ufind.fuzzy_filter').filter(get_queries(), lines, config.get_iter)
     render(matches)
   end
 
-  local matches, num_groups = require('ufind.fuzzy_filter').filter(get_queries(), lines, config.delimiter)
+  local matches, num_groups = require('ufind.fuzzy_filter').filter(get_queries(), lines, config.get_iter)
 
   -- Create extra input buffers
   for _ = 2, num_groups do

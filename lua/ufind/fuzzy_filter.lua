@@ -103,7 +103,7 @@ local function parse_queries(raw_queries)
     return query_sets
 end
 
-local function filter(raw_queries, lines, delimiter)
+local function filter(raw_queries, lines, get_iter)
     local query_sets = parse_queries(raw_queries)
 
     local has_any_query = util.tbl_some(function(queries)
@@ -117,7 +117,7 @@ local function filter(raw_queries, lines, delimiter)
         local j = 1
         if not has_any_query then
             table.insert(matches, {index = i, positions = {}, score = 0})
-            for _, _ in util.gsplit(line, delimiter, false) do
+            for _, _ in get_iter(line) do
                 max_parts = math.max(j, max_parts)
                 j = j + 1
             end
@@ -125,7 +125,7 @@ local function filter(raw_queries, lines, delimiter)
             local match_success = true
             local positions = {}
             local score = 0
-            for line_part, start in util.gsplit(line, delimiter, false) do
+            for start, line_part in get_iter(line) do
                 max_parts = math.max(j, max_parts)
                 local query_set = query_sets[j]
                 if query_set and not vim.tbl_isempty(query_set) then -- has query

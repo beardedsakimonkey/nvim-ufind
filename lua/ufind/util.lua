@@ -1,39 +1,3 @@
--- Modified version of `vim.gsplit` that also returns the start index of the match.
--- Also handles '$' `sep` without erroring.
-local function gsplit(s, sep, plain)
-    vim.validate({ s = { s, 's' }, sep = { sep, 's' }, plain = { plain, 'b', true } })
-
-    local start = 1
-    local done = false
-
-    local function _pass(i, j)
-        if i then
-            assert(j + 1 > start, 'Infinite loop detected')
-            if i > j then done = true end -- str:find('$')
-            local start_save = start
-            local seg = s:sub(start, i - 1)
-            start = j + 1
-            return seg, start_save
-        else
-            done = true
-            return s:sub(start), start
-        end
-    end
-
-    return function()
-        if done or s == '' then
-            return
-        end
-        if sep == '' then
-            if start == #s then
-                done = true
-            end
-            return _pass(start + 1, start)
-        end
-        return _pass(s:find(sep, start, plain))
-    end
-end
-
 -- Find the minimum subsequence in `str` containing `chars` (in order) using a
 -- sliding window algorithm.
 local function find_min_subsequence(str, chars)
@@ -91,7 +55,6 @@ local function tbl_some(fn, t)
 end
 
 return {
-    gsplit = gsplit,
     find_min_subsequence = find_min_subsequence,
     tbl_some = tbl_some,
 }
