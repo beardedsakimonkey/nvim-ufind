@@ -76,6 +76,7 @@ local config_defaults = {
   get_highlights = nil,
   on_complete = function(cmd, item) vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(item)) end,
   get_iter = function(line) return ipairs({line}) end,
+  num_groups = 1,
 }
 
 -- The entrypoint for opening a finder window.
@@ -85,6 +86,7 @@ local config_defaults = {
 --   `get_highlights`: a function that returns highlight ranges to highlight the result line.
 --   `on_complete`: a function that's called when selecting an item to open.
 --   `get_iter`: a function that returns an iterator that breaks up lines into parts that are queried individually.
+--   `num_groups`: number of query groups (required for now)
 --
 -- More formally:
 --   type items = array<'item>
@@ -93,6 +95,7 @@ local config_defaults = {
 --     get_highlights?: ('item, string) => ?array<{hl_group, col_start, col_end}>,
 --     on_complete?: ('edit' | 'split' | 'vsplit' | 'tabedit', 'item) => nil,
 --     get_iter?: (string) => (() => number, string),
+--     num_groups: number
 --   }
 --
 -- Example:
@@ -224,7 +227,11 @@ local function open(items, config)
     end, input_bufs)
   end
 
-  local function render(matches)
+  local function on_lines()
+    -- Reset cursor to top
+    set_cursor(1)
+    -- Run the fuzzy filter
+    local matches = require('ufind.fuzzy_filter').filter(get_queries(), lines, config.get_iter)
     -- Sort matches
     table.sort(matches, function(a, b) return a.score > b.score end)
     -- Render matches
@@ -244,25 +251,15 @@ local function open(items, config)
     match_to_item = new_match_to_item
   end
 
-  local function on_lines()
-    -- Reset cursor to top
-    set_cursor(1)
-    -- Run the fuzzy filter
-    local matches = require('ufind.fuzzy_filter').filter(get_queries(), lines, config.get_iter)
-    render(matches)
-  end
-
-  local matches, num_groups = require('ufind.fuzzy_filter').filter(get_queries(), lines, config.get_iter)
-
   -- Create extra input buffers
-  for _ = 2, num_groups do
+  for _ = 2, config.num_groups do
     local buf = create_input_buf()
     table.insert(input_bufs, buf)
   end
 
   -- Set prompts
   for i = 1, #input_bufs do
-    local prompt = i .. '/' .. num_groups .. PROMPT
+    local prompt = i .. '/' .. config.num_groups .. PROMPT
     vim.fn.prompt_setprompt(input_bufs[i], prompt)
   end
 
@@ -294,7 +291,6 @@ local function open(items, config)
     api.nvim_buf_attach(input_bufs[i], false, {on_lines = vim.schedule_wrap(on_lines)})
   end
 
-  render(matches)
   vim.cmd('startinsert')
 end
 
