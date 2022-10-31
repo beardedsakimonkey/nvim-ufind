@@ -54,7 +54,17 @@ local function tbl_some(fn, t)
     return false
 end
 
+local function clamp(v, min, max)
+    return math.min(math.max(v, min), max)
+end
+
+local function keymap(buf, mode, lhs, rhs)
+    vim.keymap.set(mode, lhs, rhs, {nowait = true, silent = true, buffer = buf})
+end
+
 return {
     find_min_subsequence = find_min_subsequence,
     tbl_some = tbl_some,
+    clamp = clamp,
+    keymap = keymap,
 }
