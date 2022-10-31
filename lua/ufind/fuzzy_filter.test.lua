@@ -1,6 +1,5 @@
 local fuzzy_filter = require('ufind.fuzzy_filter')
 local util = require('ufind.util')
-local helpers = require('ufind.helpers')
 local filter = fuzzy_filter.filter
 local find_min_subsequence = util.find_min_subsequence
 
@@ -31,36 +30,36 @@ asserteq(
     nil
 )
 
-local get_iter = function(line) return ipairs({line}) end
-local get_iter_colon = function(line) return helpers.splitonce(line, ':') end
+local pat = util.inject_empty_captures '^(.*)$'
+local pat_colon = util.inject_empty_captures '^([^:]-):(.*)$'
 
 asserteq(
-    filter({'x'}, {'x.lua', 'y.lua'}, get_iter),
+    filter({'x'}, {'x.lua', 'y.lua'}, pat),
     {{index = 1, positions = {1}, score = 1}}
 )
 
 asserteq(
-    filter({'fil', 'foo'}, {'file.lua: print(foo)'}, get_iter_colon),
+    filter({'fil', 'foo'}, {'file.lua: print(foo)'}, pat_colon),
     {{index = 1, positions = {1, 2, 3, 17, 18, 19}, score = 10}}
 )
 
 asserteq(
-    filter({'lua$', 'a'}, {'file.lua: a', 'file.c: x'}, get_iter_colon),
+    filter({'lua$', 'a'}, {'file.lua: a', 'file.c: x'}, pat_colon),
     {{index = 1, positions = {11}, score = 1}}
 )
 
 asserteq(
-    filter({'', 'zxczxc'}, {'file: a', 'file: x'}, get_iter_colon),
+    filter({'', 'zxczxc'}, {'file: a', 'file: x'}, pat_colon),
     {}
 )
 
 asserteq(
-    filter({'', 'zxc'}, {'file: zxc', 'file: x'}, get_iter_colon),
+    filter({'', 'zxc'}, {'file: zxc', 'file: x'}, pat_colon),
     {{index = 1, positions = {7, 8, 9}, score = 5}}
 )
 
 asserteq(
-    filter({'', 'sub'}, {'file: s:sub()', 'file: x'}, get_iter_colon),
+    filter({'', 'sub'}, {'file: s:sub()', 'file: x'}, pat_colon),
     {{index = 1, positions = {9, 10, 11}, score = 5}}
 )
 

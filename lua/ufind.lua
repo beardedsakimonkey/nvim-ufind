@@ -2,22 +2,13 @@ local view = require('ufind.view')
 local util = require('ufind.util')
 local api = vim.api
 
-local config_defaults = {
-  get_value = function(item) return item end,
-  get_highlights = nil,
-  on_complete = function(cmd, item) vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(item)) end,
-  get_iter = function(line) return ipairs({line}) end,
-  num_groups = 1,
-}
-
 local Ufind = {
   get_selected_item = function()
     error('Not implemented')
   end,
 }
 
-function Ufind.new(config)
-  config = vim.tbl_extend('force', {}, config_defaults, config or {})
+function Ufind.new(config, num_groups)
   local o = {}
   setmetatable(o, {__index = Ufind})
 
@@ -25,13 +16,13 @@ function Ufind.new(config)
   o.input_bufs = {}
 
   -- Create input buffers
-  for _ = 1, config.num_groups do
+  for _ = 1, num_groups do
     table.insert(o.input_bufs, view.create_input_buf())
   end
 
   -- Set prompts
   for i = 1, #o.input_bufs do
-    local prompt = i .. '/' .. config.num_groups .. view.PROMPT
+    local prompt = i .. '/' .. num_groups .. view.PROMPT
     vim.fn.prompt_setprompt(o.input_bufs[i], prompt)
   end
 
@@ -150,14 +141,20 @@ function Ufind:use_virt_text(text)
 end
 
 
+local config_defaults = {
+  get_value = function(item) return item end,
+  get_highlights = nil,
+  on_complete = function(cmd, item) vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(item)) end,
+  pattern = '^(.*)$',
+}
+
 -- The entrypoint for opening a finder window.
 -- `items`: a sequential table of any type.
 -- `config`: an optional table containing:
 --   `get_value`: a function that converts an item to a string to be passed to the fuzzy filterer.
 --   `get_highlights`: a function that returns highlight ranges to highlight the result line.
 --   `on_complete`: a function that's called when selecting an item to open.
---   `get_iter`: a function that returns an iterator that breaks up lines into parts that are queried individually.
---   `num_groups`: number of query groups (required for now)
+--   `pattern`: a regex with capture groups where each group will be queried individually
 --
 -- More formally:
 --   type items = array<'item>
@@ -165,8 +162,7 @@ end
 --     get_value?: 'item => string,
 --     get_highlights?: ('item, string) => ?array<{hl_group, col_start, col_end}>,
 --     on_complete?: ('edit' | 'split' | 'vsplit' | 'tabedit', 'item) => nil,
---     get_iter?: (string) => (() => number, string),
---     num_groups: number
+--     pattern?: string
 --   }
 --
 -- Example:
@@ -182,14 +178,14 @@ end
 --                         end })
 local function open(items, config)
   assert(type(items) == 'table')
+  config = vim.tbl_extend('force', {}, config_defaults, config or {})
+  local pattern, num_groups = util.inject_empty_captures(config.pattern)
+  local uf = Ufind.new(config, num_groups)
 
   -- Mapping from match index (essentially the line number of the selected
   -- result) to item index (the index of the corresponding item in  `items`).
   -- This is needed by `open_result` to pass the selected item to `on_complete`.
   local match_to_item = {}
-
-  local uf = Ufind.new(config)
-  config = uf.config
 
   function uf:get_selected_item()
     local cursor = api.nvim_win_get_cursor(self.result_win)
@@ -216,7 +212,8 @@ local function open(items, config)
 
   local function on_lines()
     uf:set_cursor(1)
-    local matches = require('ufind.fuzzy_filter').filter(uf:get_queries(), lines, config.get_iter)
+
+    local matches = require('ufind.fuzzy_filter').filter(uf:get_queries(), lines, pattern)
     api.nvim_buf_set_lines(uf.result_buf, 0, -1, true, vim.tbl_map(function(match)
       return lines[match.index]
     end, matches))
