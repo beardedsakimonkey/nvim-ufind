@@ -74,7 +74,6 @@ local function open(items, config)
 
   local function on_lines()
     uf:set_cursor(1)
-
     local matches = require('ufind.fuzzy_filter').filter(uf:get_queries(), lines, pattern)
     api.nvim_buf_set_lines(uf.result_buf, 0, -1, true, vim.tbl_map(function(match)
       return lines[match.index]

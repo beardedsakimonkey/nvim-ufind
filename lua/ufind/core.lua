@@ -4,9 +4,7 @@ local util = require('ufind.util')
 local api = vim.api
 
 local Ufind = {
-    get_selected_item = function()
-        error('Not implemented')
-    end,
+    get_selected_item = function() error('Not implemented') end,
 }
 
 function Ufind.new(config, num_groups)
@@ -44,6 +42,7 @@ function Ufind.new(config, num_groups)
     return o
 end
 
+
 function Ufind:switch_input_buf(is_forward)
     local offset = is_forward and 1 or -1
     local i = self.cur_input + offset
@@ -57,9 +56,11 @@ function Ufind:switch_input_buf(is_forward)
     api.nvim_win_set_buf(self.input_win, self.input_bufs[self.cur_input])
 end
 
+
 function Ufind:set_cursor(line)
     api.nvim_win_set_cursor(self.result_win, {line, 0})
 end
+
 
 function Ufind:move_cursor(offset)
     local cursor = api.nvim_win_get_cursor(self.result_win)
@@ -69,11 +70,13 @@ function Ufind:move_cursor(offset)
     self:set_cursor(new_row)
 end
 
+
 function Ufind:move_cursor_page(is_up, is_half)
     local win = api.nvim_win_get_config(self.result_win)
     local offset = (win.height * (is_up and -1 or 1)) / (is_half and 2 or 1)
     self:move_cursor(offset)
 end
+
 
 function Ufind:quit()
     api.nvim_del_autocmd(self.vimresized_auid)
@@ -87,23 +90,26 @@ function Ufind:quit()
     if api.nvim_win_is_valid(self.result_win) then api.nvim_win_close(self.result_win, false) end
 end
 
+
 function Ufind:open_result(cmd)
     local item = self:get_selected_item()
-    self:quit() -- cleanup first in case `on_complete` opens another finder
-    return self.config.on_complete(cmd, item)
+    self:quit()  -- cleanup first in case `on_complete` opens another finder
+    self.config.on_complete(cmd, item)
 end
+
 
 function Ufind:get_queries()
     return vim.tbl_map(function(buf)
         local buf_lines = api.nvim_buf_get_lines(buf, 0, 1, true)
         local query = buf_lines[1]
         local prompt = vim.fn.prompt_getprompt(buf)
-        return query:sub(1 + #prompt) -- trim prompt from the query
+        return query:sub(1 + #prompt)  -- trim prompt from the query
     end, self.input_bufs)
 end
 
+
 function Ufind:setup_keymaps(buf)
-    util.keymap(buf, {'i', 'n'}, '<Esc>', function() self:quit() end) -- can use <C-c> to exit insert mode
+    util.keymap(buf, {'i', 'n'}, '<Esc>', function() self:quit() end)
     util.keymap(buf, 'i', '<CR>', function() self:open_result('edit') end)
     util.keymap(buf, 'i', '<C-l>', function() self:open_result('vsplit') end)
     util.keymap(buf, 'i', '<C-s>', function() self:open_result('split') end)
@@ -122,6 +128,7 @@ function Ufind:setup_keymaps(buf)
     util.keymap(buf, 'i', '<C-p>', function() self:switch_input_buf(false) end)
 end
 
+
 function Ufind:use_hl_matches(matches)
     api.nvim_buf_clear_namespace(self.result_buf, self.match_ns, 0, -1)
     for i, match in ipairs(matches) do
@@ -130,6 +137,7 @@ function Ufind:use_hl_matches(matches)
         end
     end
 end
+
 
 function Ufind:use_virt_text(text)
     for _, buf in ipairs(self.input_bufs) do

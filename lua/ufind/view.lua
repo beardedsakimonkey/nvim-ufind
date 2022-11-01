@@ -28,22 +28,24 @@ local function get_win_layouts()
     return input_win, result_win
 end
 
+
 local function create_wins(input_buf, result_buf)
     local input_win_layout, result_win_layout = get_win_layouts()
     local input_win = api.nvim_open_win(
-    input_buf,
-    true, -- enter
-    vim.tbl_extend('force', {style = 'minimal'}, input_win_layout)
+        input_buf,
+        true,  -- enter
+        vim.tbl_extend('force', {style = 'minimal'}, input_win_layout)
     )
     local result_win = api.nvim_open_win(
-    result_buf,
-    false, -- enter
-    vim.tbl_extend('force', {style = 'minimal', focusable = false}, result_win_layout)
+        result_buf,
+        false,  -- enter
+        vim.tbl_extend('force', {style = 'minimal', focusable = false}, result_win_layout)
     )
     vim.wo[result_win].cursorline = true
     vim.wo[result_win].winhighlight = 'CursorLine:PmenuSel'
     return input_win, result_win
 end
+
 
 local function handle_vimresized(input_win, result_win)
     local function relayout()
@@ -55,6 +57,7 @@ local function handle_vimresized(input_win, result_win)
     end
     return api.nvim_create_autocmd('VimResized', {callback = relayout})
 end
+
 
 local function create_input_buf()
     local buf = api.nvim_create_buf(false, true)

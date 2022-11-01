@@ -45,6 +45,7 @@ local function find_min_subsequence(str, chars)
     end
 end
 
+
 local function tbl_some(fn, t)
     for _, v in ipairs(t) do
         if fn(v) then
@@ -54,20 +55,23 @@ local function tbl_some(fn, t)
     return false
 end
 
+
 local function clamp(v, min, max)
     return math.min(math.max(v, min), max)
 end
+
 
 local function keymap(buf, mode, lhs, rhs)
     vim.keymap.set(mode, lhs, rhs, {nowait = true, silent = true, buffer = buf})
 end
 
+
 local function inject_empty_captures(pat)
-    local n = 0 -- number of captures found
+    local n = 0  -- number of captures found
     local sub = string.gsub(pat, '%%?%b()', function(match)
         -- TODO: we shouldn't inject for [(]%)
-        if vim.endswith(match, '()') or -- (), %b()
-            vim.startswith(match, '%(') then -- %(
+        if vim.endswith(match, '()') or  -- (), %b()
+            vim.startswith(match, '%(') then  -- %(
             return
         end
         n = n + 1
@@ -77,10 +81,16 @@ local function inject_empty_captures(pat)
     return sub, n
 end
 
+
+local function pack(...)
+    return {...}
+end
+
 return {
     find_min_subsequence = find_min_subsequence,
     tbl_some = tbl_some,
     clamp = clamp,
     keymap = keymap,
     inject_empty_captures = inject_empty_captures,
+    pack = pack,
 }
