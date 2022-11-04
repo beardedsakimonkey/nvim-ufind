@@ -1,5 +1,6 @@
 local util = require('ufind.util')
 
+-- TODO: Prioritize by # matches to tail length ratio
 local function calc_score(positions, str)
     local tail = str:find('[^/]+/?$')
     local score = 0
@@ -134,14 +135,14 @@ local function filter(raw_queries, lines, pattern)
             local query_set = query_sets[j]
             if query_set and not vim.tbl_isempty(query_set) then  -- has query
                 local mpos, mscore = fuzzy_match(cap, query_set)
-                if mpos then
+                if mpos then  -- match success
                     for _, mp in ipairs(mpos) do
                         table.insert(pos, cap_pos-1+mp)
                     end
                     score = score + mscore
-                else  -- query failed to match
+                else
                     fail = true
-                    break  -- stop checking captures
+                    break
                 end
             end
             j = j + 1

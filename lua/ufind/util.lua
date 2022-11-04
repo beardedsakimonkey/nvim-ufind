@@ -86,6 +86,30 @@ local function pack(...)
     return {...}
 end
 
+
+local function throttle(fn)
+    local args
+    return function(...)
+        if args == nil then  -- nothing scheduled
+            args = vim.F.pack_len(...)
+            vim.schedule(function()
+                local args2 = args
+                args = nil  -- erase args first in case fn is recursive
+                fn(vim.F.unpack_len(args2))
+            end)
+        else  -- the scheduled fn hasn't run yet
+            args = vim.F.pack_len(...)
+        end
+    end
+end
+
+local function err(...)
+    local args = {...}
+    vim.schedule(function ()
+        vim.api.nvim_err_writeln('[ufind] ' .. table.concat(args, ' '))
+    end)
+end
+
 return {
     find_min_subsequence = find_min_subsequence,
     tbl_some = tbl_some,
@@ -93,4 +117,6 @@ return {
     keymap = keymap,
     inject_empty_captures = inject_empty_captures,
     pack = pack,
+    throttle = throttle,
+    err = err,
 }

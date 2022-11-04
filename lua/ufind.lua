@@ -2,13 +2,7 @@ local core = require('ufind.core')
 local util = require('ufind.util')
 
 local api = vim.api
-
-local config_defaults = {
-    get_value = function(item) return item end,
-    get_highlights = nil,
-    on_complete = function(cmd, item) vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(item)) end,
-    pattern = '^(.*)$',
-}
+local uv = vim.loop
 
 -- The entrypoint for opening a finder window.
 -- `items`: a sequential table of any type.
@@ -40,9 +34,14 @@ local config_defaults = {
 --                         end })
 local function open(items, config)
     assert(type(items) == 'table')
-    config = vim.tbl_extend('force', {}, config_defaults, config or {})
+    config = vim.tbl_extend('keep', config or {}, {
+        get_value = function(item) return item end,
+        get_highlights = nil,
+        on_complete = function(cmd, item) vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(item)) end,
+        pattern = '^(.*)$',
+    })
     local pattern, num_groups = util.inject_empty_captures(config.pattern)
-    local uf = core.Ufind.new(config, num_groups)
+    local uf = core.Ufind.new(config.on_complete, num_groups)
 
     -- Mapping from match index (essentially the line number of the selected
     -- result) to item index (the index of the corresponding item in  `items`).
@@ -100,4 +99,90 @@ local function open(items, config)
     vim.cmd('startinsert')
 end
 
-return {open = open}
+
+local render_results = util.throttle(function(results, result_buf, input_buf, virt_ns)
+    vim.schedule(function()
+        local lines = vim.split(table.concat(results), '\n', {trimempty = true})
+        api.nvim_buf_set_lines(result_buf, 0, -1, true, lines)
+        api.nvim_buf_clear_namespace(input_buf, virt_ns, 0, -1)
+        api.nvim_buf_set_extmark(input_buf, virt_ns, 0, -1, {
+            virt_text = {{tostring(#lines), 'Comment'}},
+            virt_text_pos = 'right_align'
+        })
+        -- TODO
+        -- uf:use_hl_matches(matches)
+    end)
+end)
+
+
+--   type fn = (string) => string, array<string>
+--   type config? = {
+--     get_highlights?: (string) => ?array<{hl_group, col_start, col_end}>,
+--     on_complete?: ('edit' | 'split' | 'vsplit' | 'tabedit', string) => nil,
+--   }
+local function open_live(fn, config)
+    assert(type(fn) == 'function')
+    config = vim.tbl_extend('keep', config or {}, {
+        get_highlights = nil,
+        on_complete = function(cmd, item) vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(item)) end,
+    })
+    local uf = core.Ufind.new(config.on_complete)
+
+    function uf:get_selected_item()
+        local cursor = api.nvim_win_get_cursor(self.result_win)
+        local row = cursor[1]
+        local lines = api.nvim_buf_get_lines(self.result_buf, row-1, row, false)
+        return lines[1]
+    end
+
+    local prev_handle
+
+    local function on_lines()
+        uf:set_cursor(1)
+        if prev_handle and prev_handle:is_active() then
+            prev_handle:kill(uv.constants.SIGTERM)
+            -- Don't close the handle; that'll happen in on_exit
+        end
+        local stdout, stderr = uv.new_pipe(), uv.new_pipe()
+        local stdout_buf, stderr_buf = {}, {}
+        local query = uf.get_query(uf.input_bufs[1])
+        local cmd, args = fn(query)
+
+        local handle
+        handle = uv.spawn(cmd, {
+            stdio = {nil, stdout, stderr},
+            args = args,
+        }, function(exit_code)  -- on exit
+            if next(stderr_buf) ~= nil then
+                util.err(table.concat(stderr_buf))
+            end
+            if exit_code ~= 0 then
+                render_results({}, uf.result_buf, uf.input_bufs[1], uf.virt_ns)
+            end
+            handle:close()
+        end)
+        prev_handle = handle
+        stdout:read_start(function(err, chunk)  -- on stdout
+            assert(not err, err)
+            if chunk then
+                table.insert(stdout_buf, chunk)
+                render_results(stdout_buf, uf.result_buf, uf.input_bufs[1], uf.virt_ns)
+            end
+        end)
+        stderr:read_start(function(err, chunk)  -- on stderr
+            assert(not err, err)
+            if chunk then
+                table.insert(stderr_buf, chunk)
+            end
+        end)
+    end
+
+    api.nvim_buf_attach(uf.input_bufs[1], false, {on_lines = on_lines})
+    vim.cmd('startinsert')
+end
+
+
+return {
+    open = open,
+    open_live = open_live,
+}
