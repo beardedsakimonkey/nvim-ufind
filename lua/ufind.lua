@@ -72,6 +72,9 @@ local function open(items, config)
     end
 
     local function on_lines()
+        if not api.nvim_buf_is_valid(uf.result_buf) then  -- window has been closed
+            return
+        end
         uf:set_cursor(1)
         local matches = require('ufind.fuzzy_filter').filter(uf:get_queries(), lines, pattern)
         api.nvim_buf_set_lines(uf.result_buf, 0, -1, true, vim.tbl_map(function(match)
@@ -102,6 +105,9 @@ end
 
 local render_results = util.throttle(function(results, result_buf, input_buf, virt_ns, line_ns, ansi)
     vim.schedule(function()
+        if not api.nvim_buf_is_valid(result_buf) then  -- window has been closed
+            return
+        end
         local lines = vim.split(table.concat(results), '\n', {trimempty = true})
         if ansi then
             local lines_noansi = {}
@@ -168,6 +174,17 @@ local function open_live(getcmd, config)
 
     local prev_handle
 
+    local function on_unload()
+        if prev_handle and prev_handle:is_active() then
+            prev_handle:kill(uv.constants.SIGTERM)
+        end
+    end
+    api.nvim_create_autocmd('BufUnload', {
+        callback = on_unload,
+        buffer = uf.input_buf,
+        once = true,  -- for some reason, BufUnload fires twice otherwise
+    })
+
     local function on_lines()
         uf:set_cursor(1)
         if prev_handle and prev_handle:is_active() then
@@ -183,11 +200,11 @@ local function open_live(getcmd, config)
         handle = uv.spawn(cmd, {
             stdio = {nil, stdout, stderr},
             args = args,
-        }, function(exit_code)  -- on exit
+        }, function(exit_code, signal)  -- on exit
             if next(stderrbuf) ~= nil then
                 util.err(table.concat(stderrbuf))
             end
-            if exit_code ~= 0 then
+            if exit_code ~= 0 and signal ~= uv.constants.SIGTERM then
                 render_results({}, uf.result_buf, uf.input_bufs[1], uf.virt_ns, uf.line_ns, config.ansi)
             end
             handle:close()
