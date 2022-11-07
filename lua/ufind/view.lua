@@ -42,7 +42,8 @@ local function create_wins(input_buf, result_buf)
         vim.tbl_extend('force', {style = 'minimal', focusable = false}, result_win_layout)
     )
     vim.wo[result_win].cursorline = true
-    vim.wo[result_win].winhighlight = 'CursorLine:PmenuSel'
+    -- vim.wo[result_win].winhighlight = 'CursorLine:PmenuSel'
+    vim.wo[result_win].winhighlight = 'NormalFloat:Normal'
     return input_win, result_win
 end
 

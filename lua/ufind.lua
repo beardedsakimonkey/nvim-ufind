@@ -100,31 +100,62 @@ local function open(items, config)
 end
 
 
-local render_results = util.throttle(function(results, result_buf, input_buf, virt_ns)
+local render_results = util.throttle(function(results, result_buf, input_buf, virt_ns, line_ns, ansi)
     vim.schedule(function()
         local lines = vim.split(table.concat(results), '\n', {trimempty = true})
-        api.nvim_buf_set_lines(result_buf, 0, -1, true, lines)
+        if ansi then
+            local lines_noansi = {}
+            local all_hls = {}
+            for i, line in ipairs(lines) do
+                local hls, line_noansi = require('ufind.ansi').parse(line, i)
+                table.insert(lines_noansi, line_noansi)
+                for _, hl in ipairs(hls) do
+                    table.insert(all_hls, hl)
+                end
+            end
+            api.nvim_buf_set_lines(result_buf, 0, -1, true, lines_noansi)
+            api.nvim_buf_clear_namespace(result_buf, line_ns, 0, -1)
+            for _, hl in ipairs(all_hls) do
+                local exists = pcall(api.nvim_get_hl_by_name, hl.hl_group, true)
+                if not exists then
+                    api.nvim_set_hl(0, hl.hl_group, {
+                        fg = hl.fg,
+                        bg = hl.bg,
+                        ctermfg = hl.fg,
+                        ctermbg = hl.bg,
+                        bold = hl.bold,
+                        italic = hl.italic,
+                        underline = hl.underline,
+                        reverse = hl.reverse,
+                    })
+                end
+                api.nvim_buf_add_highlight(result_buf, line_ns, hl.hl_group, hl.line-1, hl.col_start-1, hl.col_end-1)
+            end
+        else
+            api.nvim_buf_set_lines(result_buf, 0, -1, true, lines)
+        end
+        -- Set virttext
         api.nvim_buf_clear_namespace(input_buf, virt_ns, 0, -1)
         api.nvim_buf_set_extmark(input_buf, virt_ns, 0, -1, {
             virt_text = {{tostring(#lines), 'Comment'}},
             virt_text_pos = 'right_align'
         })
-        -- TODO
-        -- uf:use_hl_matches(matches)
     end)
 end)
 
 
---   type fn = (string) => string, array<string>
+--   type getcmd = (string) => string, array<string>
 --   type config? = {
 --     get_highlights?: (string) => ?array<{hl_group, col_start, col_end}>,
 --     on_complete?: ('edit' | 'split' | 'vsplit' | 'tabedit', string) => nil,
+--     ansi?: boolean,
 --   }
-local function open_live(fn, config)
-    assert(type(fn) == 'function')
+local function open_live(getcmd, config)
+    assert(type(getcmd) == 'function')
     config = vim.tbl_extend('keep', config or {}, {
         get_highlights = nil,
         on_complete = function(cmd, item) vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(item)) end,
+        ansi = false,
     })
     local uf = core.Ufind.new(config.on_complete)
 
@@ -144,20 +175,20 @@ local function open_live(fn, config)
             -- Don't close the handle; that'll happen in on_exit
         end
         local stdout, stderr = uv.new_pipe(), uv.new_pipe()
-        local stdout_buf, stderr_buf = {}, {}
+        local stdoutbuf, stderrbuf = {}, {}
         local query = uf.get_query(uf.input_bufs[1])
-        local cmd, args = fn(query)
+        local cmd, args = getcmd(query)
 
         local handle
         handle = uv.spawn(cmd, {
             stdio = {nil, stdout, stderr},
             args = args,
         }, function(exit_code)  -- on exit
-            if next(stderr_buf) ~= nil then
-                util.err(table.concat(stderr_buf))
+            if next(stderrbuf) ~= nil then
+                util.err(table.concat(stderrbuf))
             end
             if exit_code ~= 0 then
-                render_results({}, uf.result_buf, uf.input_bufs[1], uf.virt_ns)
+                render_results({}, uf.result_buf, uf.input_bufs[1], uf.virt_ns, uf.line_ns, config.ansi)
             end
             handle:close()
         end)
@@ -165,14 +196,14 @@ local function open_live(fn, config)
         stdout:read_start(function(err, chunk)  -- on stdout
             assert(not err, err)
             if chunk then
-                table.insert(stdout_buf, chunk)
-                render_results(stdout_buf, uf.result_buf, uf.input_bufs[1], uf.virt_ns)
+                table.insert(stdoutbuf, chunk)
+                render_results(stdoutbuf, uf.result_buf, uf.input_bufs[1], uf.virt_ns, uf.line_ns, config.ansi)
             end
         end)
         stderr:read_start(function(err, chunk)  -- on stderr
             assert(not err, err)
             if chunk then
-                table.insert(stderr_buf, chunk)
+                table.insert(stderrbuf, chunk)
             end
         end)
     end
