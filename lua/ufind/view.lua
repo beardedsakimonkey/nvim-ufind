@@ -24,7 +24,7 @@ local function get_win_layouts()
         row = (input_height + row),
         col = col,
         width = width - (border and 2 or 0),
-        height = (height - input_height - (border and 2 or 0)),
+        height = height - input_height - (border and 2 or 0),
     }
     return input_win, result_win
 end
