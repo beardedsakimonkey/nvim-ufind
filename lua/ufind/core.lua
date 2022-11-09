@@ -7,11 +7,11 @@ local Ufind = {
     get_selected_item = function() error('Not implemented') end,
 }
 
-function Ufind.new(on_complete, num_groups)
+function Ufind.new(opt)
     local o = {}
     setmetatable(o, {__index = Ufind})
 
-    num_groups = num_groups or 1
+    local num_groups = opt.num_groups or 1
     o.cur_input = 1
     o.input_bufs = {}
 
@@ -26,7 +26,7 @@ function Ufind.new(on_complete, num_groups)
         vim.fn.prompt_setprompt(o.input_bufs[i], prompt)
     end
 
-    o.on_complete = on_complete
+    o.on_complete = opt.on_complete
     o.orig_win = api.nvim_get_current_win()
     o.result_buf = api.nvim_create_buf(false, true)
     o.input_win, o.result_win = view.create_wins(o.input_bufs[1], o.result_buf)

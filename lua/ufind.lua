@@ -41,7 +41,7 @@ local function open(items, config)
         pattern = '^(.*)$',
     })
     local pattern, num_groups = util.inject_empty_captures(config.pattern)
-    local uf = core.Ufind.new(config.on_complete, num_groups)
+    local uf = core.Ufind.new({on_complete = config.on_complete, num_groups = num_groups})
 
     -- Mapping from match index (essentially the line number of the selected
     -- result) to item index (the index of the corresponding item in  `items`).
@@ -163,7 +163,7 @@ local function open_live(getcmd, config)
         on_complete = function(cmd, item) vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(item)) end,
         ansi = false,
     })
-    local uf = core.Ufind.new(config.on_complete)
+    local uf = core.Ufind.new({on_complete = config.on_complete})
 
     function uf:get_selected_item()
         local cursor = api.nvim_win_get_cursor(self.result_win)
