@@ -18,7 +18,10 @@ local uv = vim.loop
 --     get_value?: 'item => string,
 --     get_highlights?: ('item, string) => ?array<{hl_group, col_start, col_end}>,
 --     on_complete?: ('edit' | 'split' | 'vsplit' | 'tabedit', 'item) => nil,
---     pattern?: string
+--     pattern?: string,
+--     layout?: {
+--       border? = 'none',
+--     },
 --   }
 --
 -- Example:
@@ -34,14 +37,21 @@ local uv = vim.loop
 --                         end })
 local function open(items, config)
     assert(type(items) == 'table')
-    config = vim.tbl_extend('keep', config or {}, {
+    config = vim.tbl_deep_extend('keep', config or {}, {
         get_value = function(item) return item end,
         get_highlights = nil,
         on_complete = function(cmd, item) vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(item)) end,
         pattern = '^(.*)$',
+        layout = {
+            border = 'none',
+        },
     })
     local pattern, num_groups = util.inject_empty_captures(config.pattern)
-    local uf = core.Ufind.new({on_complete = config.on_complete, num_groups = num_groups})
+    local uf = core.Ufind.new({
+        on_complete = config.on_complete,
+        num_groups = num_groups,
+        layout = config.layout,
+    })
 
     -- Mapping from match index (essentially the line number of the selected
     -- result) to item index (the index of the corresponding item in  `items`).
@@ -155,15 +165,21 @@ end)
 --     get_highlights?: (string) => ?array<{hl_group, col_start, col_end}>,
 --     on_complete?: ('edit' | 'split' | 'vsplit' | 'tabedit', string) => nil,
 --     ansi?: boolean,
+--     layout?: {
+--       border? = 'none',
+--     },
 --   }
 local function open_live(getcmd, config)
     assert(type(getcmd) == 'function')
-    config = vim.tbl_extend('keep', config or {}, {
+    config = vim.tbl_deep_extend('keep', config or {}, {
         get_highlights = nil,
         on_complete = function(cmd, item) vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(item)) end,
         ansi = false,
+        layout = {
+            border = 'none',
+        },
     })
-    local uf = core.Ufind.new({on_complete = config.on_complete})
+    local uf = core.Ufind.new({on_complete = config.on_complete, layout = config.layout})
 
     function uf:get_selected_item()
         local cursor = api.nvim_win_get_cursor(self.result_win)

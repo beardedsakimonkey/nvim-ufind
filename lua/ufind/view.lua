@@ -2,8 +2,8 @@ local api = vim.api
 
 local PROMPT = '> '
 
-local function get_win_layouts()
-    local border = true  -- TODO: make configurable
+local function get_win_layouts(border)
+    local has_border = border ~= 'none'
     -- Size of the window
     local height = math.floor(vim.go.lines * 0.8)
     local width = math.floor(vim.go.columns * 0.7)
@@ -11,36 +11,38 @@ local function get_win_layouts()
     local row = math.ceil((vim.go.lines - height) / 2)
     local col = math.ceil((vim.go.columns - width) / 2)
     -- Height of the input window, including borders
-    local input_height = border and 3 or 1
+    local input_height = has_border and 3 or 1
     local input_win = {
         relative = 'editor',
         row = row,
         col = col,
-        width = width - (border and 2 or 0),
+        width = width - (has_border and 2 or 0),
         height = 1,
+        border = border,
     }
     local result_win = {
         relative = 'editor',
         row = (input_height + row),
         col = col,
-        width = width - (border and 2 or 0),
-        height = height - input_height - (border and 2 or 0),
+        width = width - (has_border and 2 or 0),
+        height = height - input_height - (has_border and 2 or 0),
+        border = border,
     }
     return input_win, result_win
 end
 
 
-local function create_wins(input_buf, result_buf)
-    local input_win_layout, result_win_layout = get_win_layouts()
+local function create_wins(input_buf, result_buf, layout)
+    local input_win_layout, result_win_layout = get_win_layouts(layout.border)
     local input_win = api.nvim_open_win(
         input_buf,
         true,  -- enter
-        vim.tbl_extend('force', {style = 'minimal', border = 'single'}, input_win_layout)
+        vim.tbl_extend('force', {style = 'minimal'}, input_win_layout)
     )
     local result_win = api.nvim_open_win(
         result_buf,
         false,  -- enter
-        vim.tbl_extend('force', {style = 'minimal', border = 'single', focusable = false}, result_win_layout)
+        vim.tbl_extend('force', {style = 'minimal', focusable = false}, result_win_layout)
     )
     vim.wo[result_win].cursorline = true
     -- TODO: make configurable
