@@ -2,38 +2,39 @@ local api = vim.api
 
 local PROMPT = '> '
 
-local function get_win_layouts(config)
-    local has_border = config.border ~= 'none'
+local function get_win_layouts(cfg)
+    local has_border = cfg.border ~= 'none'
     -- Size of the window
-    local height = math.floor(vim.go.lines * config.height)
-    local width = math.floor(vim.go.columns * config.width)
+    local height = math.floor(vim.go.lines * cfg.height)
+    local width = math.floor(vim.go.columns * cfg.width)
     -- Position of the window
     local row = math.ceil((vim.go.lines - height) / 2)
     local col = math.ceil((vim.go.columns - width) / 2)
-    -- Height of the input window, including borders
+    -- Window height, including borders
     local input_height = has_border and 3 or 1
+    local result_height = height - input_height
     local input_win = {
         relative = 'editor',
-        row = row,
+        row = cfg.input_on_top and row or (row + result_height),
         col = col,
         width = width - (has_border and 2 or 0),
         height = 1,
-        border = config.border,
+        border = cfg.border,
     }
     local result_win = {
         relative = 'editor',
-        row = (input_height + row),
+        row = cfg.input_on_top and (row + input_height) or row,
         col = col,
         width = width - (has_border and 2 or 0),
-        height = height - input_height - (has_border and 2 or 0),
-        border = config.border,
+        height = result_height - (has_border and 2 or 0),
+        border = cfg.border,
     }
     return input_win, result_win
 end
 
 
-local function create_wins(input_buf, result_buf, config)
-    local input_win_layout, result_win_layout = get_win_layouts(config)
+local function create_wins(input_buf, result_buf, cfg)
+    local input_win_layout, result_win_layout = get_win_layouts(cfg)
     local input_win = api.nvim_open_win(
         input_buf,
         true,  -- enter
@@ -52,11 +53,11 @@ local function create_wins(input_buf, result_buf, config)
 end
 
 
-local function handle_vimresized(input_win, result_win)
+local function handle_vimresized(input_win, result_win, cfg)
     local function relayout()
-        local input_win_layout, result_win_layout = get_win_layouts()
+        local input_win_layout, result_win_layout = get_win_layouts(cfg)
         api.nvim_win_set_config(input_win, input_win_layout)
-        -- NOTE: This disables 'cursorline' due to style = 'minimal' window config
+        -- NOTE: This disables 'cursorline' due to style = 'minimal' window cfg
         api.nvim_win_set_config(result_win, result_win_layout)
         vim.wo[result_win].cursorline = true
     end

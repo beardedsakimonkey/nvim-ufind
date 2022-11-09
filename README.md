@@ -19,7 +19,7 @@ TODO
 ----
   - [ ] `open` should take a command spec so the window opens immediately
   - [ ] multiselect
-  - [ ] configurable layout
+  - [x] configurable layout
   - [ ] configurable mappings
   - [ ] expose more highlight groups
   - [ ] lua type annotations
