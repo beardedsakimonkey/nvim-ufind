@@ -21,6 +21,8 @@ local uv = vim.loop
 --     pattern?: string,
 --     layout?: {
 --       border? = 'none',
+--       height? = 0.8,
+--       width? = 0.7,
 --     },
 --   }
 --
@@ -44,6 +46,8 @@ local function open(items, config)
         pattern = '^(.*)$',
         layout = {
             border = 'none',
+            height = 0.8,
+            width = 0.7,
         },
     })
     local pattern, num_groups = util.inject_empty_captures(config.pattern)
@@ -167,6 +171,8 @@ end)
 --     ansi?: boolean,
 --     layout?: {
 --       border? = 'none',
+--       height? = 0.8,
+--       width? = 0.7,
 --     },
 --   }
 local function open_live(getcmd, config)
@@ -177,6 +183,8 @@ local function open_live(getcmd, config)
         ansi = false,
         layout = {
             border = 'none',
+            height = 0.8,
+            width = 0.7,
         },
     })
     local uf = core.Ufind.new({on_complete = config.on_complete, layout = config.layout})

@@ -2,11 +2,11 @@ local api = vim.api
 
 local PROMPT = '> '
 
-local function get_win_layouts(border)
-    local has_border = border ~= 'none'
+local function get_win_layouts(config)
+    local has_border = config.border ~= 'none'
     -- Size of the window
-    local height = math.floor(vim.go.lines * 0.8)
-    local width = math.floor(vim.go.columns * 0.7)
+    local height = math.floor(vim.go.lines * config.height)
+    local width = math.floor(vim.go.columns * config.width)
     -- Position of the window
     local row = math.ceil((vim.go.lines - height) / 2)
     local col = math.ceil((vim.go.columns - width) / 2)
@@ -18,7 +18,7 @@ local function get_win_layouts(border)
         col = col,
         width = width - (has_border and 2 or 0),
         height = 1,
-        border = border,
+        border = config.border,
     }
     local result_win = {
         relative = 'editor',
@@ -26,14 +26,14 @@ local function get_win_layouts(border)
         col = col,
         width = width - (has_border and 2 or 0),
         height = height - input_height - (has_border and 2 or 0),
-        border = border,
+        border = config.border,
     }
     return input_win, result_win
 end
 
 
-local function create_wins(input_buf, result_buf, layout)
-    local input_win_layout, result_win_layout = get_win_layouts(layout.border)
+local function create_wins(input_buf, result_buf, config)
+    local input_win_layout, result_win_layout = get_win_layouts(config)
     local input_win = api.nvim_open_win(
         input_buf,
         true,  -- enter
