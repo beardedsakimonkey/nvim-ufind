@@ -99,49 +99,47 @@ end
 
 
 local render_results = util.throttle(function(results, result_buf, input_buf, virt_ns, line_ns, ansi)
-    vim.schedule(function()
-        if not api.nvim_buf_is_valid(result_buf) then  -- window has been closed
-            return
-        end
-        local lines = vim.split(table.concat(results), '\n', {trimempty = true})
-        if ansi then
-            local lines_noansi = {}
-            local all_hls = {}
-            for i, line in ipairs(lines) do
-                local hls, line_noansi = require('ufind.ansi').parse(line, i)
-                table.insert(lines_noansi, line_noansi)
-                for _, hl in ipairs(hls) do
-                    table.insert(all_hls, hl)
-                end
+    if not api.nvim_buf_is_valid(result_buf) then  -- window has been closed
+        return
+    end
+    local lines = vim.split(table.concat(results), '\n', {trimempty = true})
+    if ansi then
+        local lines_noansi = {}
+        local all_hls = {}
+        for i, line in ipairs(lines) do
+            local hls, line_noansi = require('ufind.ansi').parse(line, i)
+            table.insert(lines_noansi, line_noansi)
+            for _, hl in ipairs(hls) do
+                table.insert(all_hls, hl)
             end
-            api.nvim_buf_set_lines(result_buf, 0, -1, true, lines_noansi)
-            api.nvim_buf_clear_namespace(result_buf, line_ns, 0, -1)
-            for _, hl in ipairs(all_hls) do
-                local exists = pcall(api.nvim_get_hl_by_name, hl.hl_group, true)
-                if not exists then
-                    api.nvim_set_hl(0, hl.hl_group, {
-                        fg = hl.fg,
-                        bg = hl.bg,
-                        ctermfg = hl.fg,
-                        ctermbg = hl.bg,
-                        bold = hl.bold,
-                        italic = hl.italic,
-                        underline = hl.underline,
-                        reverse = hl.reverse,
-                    })
-                end
-                api.nvim_buf_add_highlight(result_buf, line_ns, hl.hl_group, hl.line-1, hl.col_start-1, hl.col_end-1)
-            end
-        else
-            api.nvim_buf_set_lines(result_buf, 0, -1, true, lines)
         end
-        -- Set virttext
-        api.nvim_buf_clear_namespace(input_buf, virt_ns, 0, -1)
-        api.nvim_buf_set_extmark(input_buf, virt_ns, 0, -1, {
-            virt_text = {{tostring(#lines), 'Comment'}},
-            virt_text_pos = 'right_align'
-        })
-    end)
+        api.nvim_buf_set_lines(result_buf, 0, -1, true, lines_noansi)
+        api.nvim_buf_clear_namespace(result_buf, line_ns, 0, -1)
+        for _, hl in ipairs(all_hls) do
+            local exists = pcall(api.nvim_get_hl_by_name, hl.hl_group, true)
+            if not exists then
+                api.nvim_set_hl(0, hl.hl_group, {
+                    fg = hl.fg,
+                    bg = hl.bg,
+                    ctermfg = hl.fg,
+                    ctermbg = hl.bg,
+                    bold = hl.bold,
+                    italic = hl.italic,
+                    underline = hl.underline,
+                    reverse = hl.reverse,
+                })
+            end
+            api.nvim_buf_add_highlight(result_buf, line_ns, hl.hl_group, hl.line-1, hl.col_start-1, hl.col_end-1)
+        end
+    else
+        api.nvim_buf_set_lines(result_buf, 0, -1, true, lines)
+    end
+    -- Set virttext
+    api.nvim_buf_clear_namespace(input_buf, virt_ns, 0, -1)
+    api.nvim_buf_set_extmark(input_buf, virt_ns, 0, -1, {
+        virt_text = {{tostring(#lines), 'Comment'}},
+        virt_text_pos = 'right_align'
+    })
 end)
 
 
