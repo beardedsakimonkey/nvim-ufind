@@ -3,6 +3,18 @@ local util = require('ufind.util')
 
 local api = vim.api
 
+---@class Ufind
+---@field cur_input number
+---@field input_bufs number[]
+---@field on_complete fun(string, any)
+---@field orig_win number
+---@field result_buf number
+---@field input_win number
+---@field result_win number
+---@field vimresized_auid number
+---@field match_ns number
+---@field line_ns number
+---@field virt_ns number
 local Ufind = {
     get_selected_item = function() error('Not implemented') end,
 }

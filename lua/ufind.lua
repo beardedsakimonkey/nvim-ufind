@@ -4,54 +4,33 @@ local util = require('ufind.util')
 local api = vim.api
 local uv = vim.loop
 
--- The entrypoint for opening a finder window.
--- `items`: a sequential table of any type.
--- `config`: an optional table containing:
---   `get_value`: a function that converts an item to a string to be passed to the fuzzy filterer.
---   `get_highlights`: a function that returns highlight ranges to highlight the result line.
---   `on_complete`: a function that's called when selecting an item to open.
---   `pattern`: a regex with capture groups where each group will be queried individually
---
--- More formally:
---   type items = array<'item>
---   type config? = {
---     get_value?: 'item => string,
---     get_highlights?: ('item, string) => ?array<{hl_group, col_start, col_end}>,
---     on_complete?: ('edit' | 'split' | 'vsplit' | 'tabedit', 'item) => nil,
---     pattern?: string,
---     layout?: {
---       border? = 'none',
---       height? = 0.8,
---       width? = 0.7,
---       input_on_top? = true,
---     },
---   }
---
--- Example:
---   require'ufind'.open({'~/foo', '~/bar'})
---
---   -- using a custom data structure
---   require'ufind'.open({{path='/home/blah/foo', label='foo'}},
---                       { get_value = function(item)
---                           return item.label
---                         end,
---                         on_complete = function(cmd, item)
---                           vim.cmd(cmd .. item.path)
---                         end })
+---@alias GetValue fun(item: any): string
+---@alias GetHighlights fun(item: any, line: string): {1: string, 2: number, 3: number}?
+---@alias OnComplete fun(cmd: 'edit'|'split'|'vsplit'|'tabedit', item: any)
+
+---@class OpenConfig
+local open_defaults = {
+    ---@type GetValue
+    get_value = function(item) return item end,
+    ---@type GetHighlights
+    get_highlights = nil,
+    ---@type OnComplete
+    on_complete = function(cmd, item) vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(item)) end,
+    pattern = '^(.*)$',
+    ---@type Layout
+    layout = {
+        border = 'none',
+        height = 0.8,
+        width = 0.7,
+        input_on_top = true,
+    },
+}
+
+---@param items any A sequential table of any type.
+---@param config? OpenConfig
 local function open(items, config)
     assert(type(items) == 'table')
-    config = vim.tbl_deep_extend('keep', config or {}, {
-        get_value = function(item) return item end,
-        get_highlights = nil,
-        on_complete = function(cmd, item) vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(item)) end,
-        pattern = '^(.*)$',
-        layout = {
-            border = 'none',
-            height = 0.8,
-            width = 0.7,
-            input_on_top = true,
-        },
-    })
+    config = vim.tbl_deep_extend('keep', config or {}, open_defaults)
     local pattern, num_groups = util.inject_empty_captures(config.pattern)
     local uf = core.Ufind.new({
         on_complete = config.on_complete,
@@ -166,31 +145,28 @@ local render_results = util.throttle(function(results, result_buf, input_buf, vi
 end)
 
 
---   type getcmd = (string) => string, array<string>
---   type config? = {
---     get_highlights?: (string) => ?array<{hl_group, col_start, col_end}>,
---     on_complete?: ('edit' | 'split' | 'vsplit' | 'tabedit', string) => nil,
---     ansi?: boolean,
---     layout?: {
---       border? = 'none',
---       height? = 0.8,
---       width? = 0.7,
---       input_on_top? = true,
---     },
---   }
+---@class OpenLiveConfig
+local open_live_defaults = {
+    ---@type GetHighlights
+    get_highlights = nil,
+    ---@type OnComplete
+    on_complete = function(cmd, item) vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(item)) end,
+    ansi = false, -- whether to parse ansi escape codes
+    ---@type Layout
+    layout = {
+        border = 'none',
+        height = 0.8,
+        width = 0.7,
+        input_on_top = true,
+    },
+}
+
+
+---@param getcmd fun(query: string): string,string[]
+---@param config? OpenLiveConfig
 local function open_live(getcmd, config)
     assert(type(getcmd) == 'function')
-    config = vim.tbl_deep_extend('keep', config or {}, {
-        get_highlights = nil,
-        on_complete = function(cmd, item) vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(item)) end,
-        ansi = false,
-        layout = {
-            border = 'none',
-            height = 0.8,
-            width = 0.7,
-            input_on_top = true,
-        },
-    })
+    config = vim.tbl_deep_extend('keep', config or {}, open_live_defaults)
     local uf = core.Ufind.new({on_complete = config.on_complete, layout = config.layout})
 
     function uf:get_selected_item()

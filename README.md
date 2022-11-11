@@ -22,10 +22,26 @@ TODO
   - [x] configurable layout
   - [ ] configurable mappings
   - [ ] expose more highlight groups
-  - [ ] lua type annotations
+  - [x] lua type annotations
   - [ ] ansi parsing for `open`?
   - [ ] implement exact match query syntax
   - [ ] implement OR query syntax?
+
+Usage
+-----
+```lua
+Example:
+require'ufind'.open({'~/foo', '~/bar'})
+
+-- using a custom data structure
+require'ufind'.open({{path='/home/blah/foo', label='foo'}},
+                    { get_value = function(item)
+                        return item.label
+                      end,
+                      on_complete = function(cmd, item)
+                        vim.cmd(cmd .. item.path)
+                      end })
+```
 
 Copyright
 ---------

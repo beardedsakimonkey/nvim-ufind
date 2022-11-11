@@ -9,15 +9,37 @@ local color_name = {
     [7] = 'White',
 }
 
+---@class Highlights
+---@field line number
+---@field col_start number
+---@field col_end number
+---@field hl_group string
+---@field bold? boolean
+---@field italic? boolean
+---@field underline? boolean
+---@field reverse? boolean
+---@field fg? {1: number, 2: string}
+---@field bg? {1: number, 2: string}
+
+---@param line string
+---@param linenr number
+---@return Highlights, string
 local function parse(line, linenr)
-    local hls = {}
     local offset = 0
-    local fg        -- {start_pos, color}
-    local bg        -- {start_pos, color}
-    local bold      -- start_pos
-    local italic    -- start_pos
-    local underline -- start_pos
-    local reverse   -- start_pos
+    ---@type Highlights
+    local hls = {}
+    ---@type {1: number, 2: string}?
+    local fg
+    ---@type {1: number, 2: string}?
+    local bg
+    ---@type number?
+    local bold
+    ---@type number?
+    local italic
+    ---@type number?
+    local underline
+    ---@type number?
+    local reverse
 
     -- NOTE: CSI is typically represented with a 2-byte sequence (0x1b5b). To
     -- save space, it can also be represented with a 1-byte code (0x9b). But,

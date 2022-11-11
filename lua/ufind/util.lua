@@ -46,8 +46,11 @@ local function find_min_subsequence(str, chars)
 end
 
 
-local function tbl_some(fn, t)
-    for _, v in ipairs(t) do
+---@generic T : any
+---@param fn fun(item: T): boolean
+---@param tbl T[]
+local function tbl_some(fn, tbl)
+    for _, v in ipairs(tbl) do
         if fn(v) then
             return true
         end
@@ -103,6 +106,7 @@ local function throttle(fn)
     end
 end
 
+---@param ... string
 local function err(...)
     local args = {...}
     vim.schedule(function ()
