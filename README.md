@@ -24,13 +24,13 @@ TODO
   - [ ] expose more highlight groups
   - [x] lua type annotations
   - [ ] ansi parsing for `open`?
+  - [ ] pattern support for `open_live`?
   - [ ] implement exact match query syntax
   - [ ] implement OR query syntax?
 
 Usage
 -----
 ```lua
-Example:
 require'ufind'.open({'~/foo', '~/bar'})
 
 -- using a custom data structure
