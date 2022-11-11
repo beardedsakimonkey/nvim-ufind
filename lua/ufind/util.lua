@@ -1,5 +1,5 @@
--- Find the minimum subsequence in `str` containing `chars` (in order) using a
--- sliding window algorithm.
+---Find the minimum subsequence in `str` containing `chars` (in order) using a
+---sliding window algorithm.
 local function find_min_subsequence(str, chars)
     local s, c = 1, 1
     local seq = {
@@ -90,7 +90,10 @@ local function pack(...)
 end
 
 
-local function throttle(fn)
+---Alternative to `vim.schedule_wrap` that returns a throttled function, which,
+---when called multiple times before finally invoked in the main loop, only
+---calls the function once (with the arguments from the most recent call).
+local function schedule_wrap_t(fn)
     local args
     return function(...)
         if args == nil then  -- nothing scheduled
@@ -121,6 +124,6 @@ return {
     keymap = keymap,
     inject_empty_captures = inject_empty_captures,
     pack = pack,
-    throttle = throttle,
+    schedule_wrap_t = schedule_wrap_t,
     err = err,
 }
