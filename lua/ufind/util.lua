@@ -64,8 +64,15 @@ local function clamp(v, min, max)
 end
 
 
-local function keymap(buf, mode, lhs, rhs)
-    vim.keymap.set(mode, lhs, rhs, {nowait = true, silent = true, buffer = buf})
+---Wrapper around `vim.keymap.set` that handles a list of lhs's
+local function keymap(mode, lhs, rhs, opts)
+    if type(lhs) == 'string' then
+        vim.keymap.set(mode, lhs, rhs, opts)
+    else
+        for _, v in ipairs(lhs) do
+            vim.keymap.set(mode, v, rhs, opts)
+        end
+    end
 end
 
 

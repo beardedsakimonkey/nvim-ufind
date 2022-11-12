@@ -8,6 +8,30 @@ local uv = vim.loop
 ---@alias GetHighlights fun(item: any, line: string): {1: string, 2: number, 3: number}?
 ---@alias OnComplete fun(cmd: 'edit'|'split'|'vsplit'|'tabedit', item: any)
 
+---@class Keymaps
+local default_keymaps = {
+    quit = '<Esc>',
+    open = '<CR>',
+    open_split = '<C-s>',
+    open_vsplit = '<C-l>',
+    open_tab = '<C-t>',
+    up = {'<C-k>', '<Up>'},
+    down = {'<C-j>', '<Down>'},
+    page_up = {'<C-b>', '<PageUp>'},
+    page_down = {'<C-f>', '<PageDown>'},
+    home = '<Home>',
+    ['end'] = '<End>',
+    prev_scope = '<C-p>',
+    next_scope = '<C-n>',
+}
+
+local default_layout = {
+    border = 'none',
+    height = 0.8,
+    width = 0.7,
+    input_on_top = true,
+}
+
 ---@class OpenConfig
 local open_defaults = {
     ---@type GetValue
@@ -18,12 +42,8 @@ local open_defaults = {
     on_complete = function(cmd, item) vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(item)) end,
     pattern = '^(.*)$',
     ---@type Layout
-    layout = {
-        border = 'none',
-        height = 0.8,
-        width = 0.7,
-        input_on_top = true,
-    },
+    layout = default_layout,
+    keymaps = default_keymaps,
 }
 
 ---@param items any A sequential table of any type.
@@ -36,6 +56,7 @@ local function open(items, config)
         on_complete = config.on_complete,
         num_groups = num_groups,
         layout = config.layout,
+        keymaps = config.keymaps,
     })
 
     -- Mapping from match index (essentially the line number of the selected
@@ -153,12 +174,8 @@ local open_live_defaults = {
     on_complete = function(cmd, item) vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(item)) end,
     ansi = false, -- whether to parse ansi escape codes
     ---@type Layout
-    layout = {
-        border = 'none',
-        height = 0.8,
-        width = 0.7,
-        input_on_top = true,
-    },
+    layout = default_layout,
+    keymaps = default_keymaps,
 }
 
 
@@ -167,7 +184,11 @@ local open_live_defaults = {
 local function open_live(getcmd, config)
     assert(type(getcmd) == 'function')
     config = vim.tbl_deep_extend('keep', config or {}, open_live_defaults)
-    local uf = core.Ufind.new({on_complete = config.on_complete, layout = config.layout})
+    local uf = core.Ufind.new({
+        on_complete = config.on_complete,
+        layout = config.layout,
+        keymaps = config.keymaps,
+    })
 
     function uf:get_selected_item()
         local cursor = api.nvim_win_get_cursor(self.result_win)

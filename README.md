@@ -20,7 +20,7 @@ TODO
   - [ ] `open` should take a command spec so the window opens immediately
   - [ ] multiselect
   - [x] configurable layout
-  - [ ] configurable mappings
+  - [x] configurable mappings
   - [ ] expose more highlight groups
   - [x] lua type annotations
   - [ ] ansi parsing for `open`?

@@ -49,7 +49,7 @@ function Ufind.new(opt)
     o.virt_ns = api.nvim_create_namespace('ufind/virt')
 
     for i = 1, #o.input_bufs do
-        o:setup_keymaps(o.input_bufs[i])
+        o:setup_keymaps(o.input_bufs[i], opt.keymaps)
     end
 
     return o
@@ -124,24 +124,39 @@ function Ufind:get_queries()
 end
 
 
-function Ufind:setup_keymaps(buf)
-    util.keymap(buf, {'i', 'n'}, '<Esc>', function() self:quit() end)
-    util.keymap(buf, 'i', '<CR>', function() self:open_result('edit') end)
-    util.keymap(buf, 'i', '<C-l>', function() self:open_result('vsplit') end)
-    util.keymap(buf, 'i', '<C-s>', function() self:open_result('split') end)
-    util.keymap(buf, 'i', '<C-t>', function() self:open_result('tabedit') end)
-    util.keymap(buf, 'i', '<C-j>', function() self:move_cursor(1) end)
-    util.keymap(buf, 'i', '<C-k>', function() self:move_cursor(-1) end)
-    util.keymap(buf, 'i', '<Down>', function() self:move_cursor(1) end)
-    util.keymap(buf, 'i', '<Up>', function() self:move_cursor(-1) end)
-    util.keymap(buf, 'i', '<C-f>', function() self:move_cursor_page(true,  true) end)
-    util.keymap(buf, 'i', '<C-b>', function() self:move_cursor_page(false, true) end)
-    util.keymap(buf, 'i', '<PageUp>', function() self:move_cursor_page(true,  false) end)
-    util.keymap(buf, 'i', '<PageDown>', function() self:move_cursor_page(false, false) end)
-    util.keymap(buf, 'i', '<Home>', function() self:set_cursor(1) end)
-    util.keymap(buf, 'i', '<End>', function() self:set_cursor(api.nvim_buf_line_count(self.result_buf)) end)
-    util.keymap(buf, 'i', '<C-n>', function() self:switch_input_buf(true) end)
-    util.keymap(buf, 'i', '<C-p>', function() self:switch_input_buf(false) end)
+function Ufind:setup_keymaps(buf, keymaps)
+    local opts = {nowait = true, silent = true, buffer = buf}
+    for k, v in pairs(keymaps) do
+        if k == 'quit' then
+            util.keymap({'i', 'n'}, v, function() self:quit() end, opts)
+        elseif k == 'open' then
+            util.keymap('i', v, function() self:open_result('edit') end, opts)
+        elseif k == 'open_split' then
+            util.keymap('i', v, function() self:open_result('split') end, opts)
+        elseif k == 'open_vsplit' then
+            util.keymap('i', v, function() self:open_result('vsplit') end, opts)
+        elseif k == 'open_tab' then
+            util.keymap('i', v, function() self:open_result('tabedit') end, opts)
+        elseif k == 'up' then
+            util.keymap('i', v, function() self:move_cursor(-1) end, opts)
+        elseif k == 'down' then
+            util.keymap('i', v, function() self:move_cursor(1) end, opts)
+        elseif k == 'page_up' then
+            util.keymap('i', v, function() self:move_cursor_page(true, true) end, opts)
+        elseif k == 'page_down' then
+            util.keymap('i', v, function() self:move_cursor_page(false,  true) end, opts)
+        elseif k == 'home' then
+            util.keymap('i', v, function() self:set_cursor(1) end, opts)
+        elseif k == 'end' then
+            util.keymap('i', v, function() self:set_cursor(api.nvim_buf_line_count(self.result_buf)) end, opts)
+        elseif k == 'prev_scope' then
+            util.keymap('i', '<C-p>', function() self:switch_input_buf(false) end, opts)
+        elseif k == 'next_scope' then
+            util.keymap('i', '<C-n>', function() self:switch_input_buf(true) end, opts)
+        else
+            util.err(('Invalid keymap name %q'):format(k))
+        end
+    end
 end
 
 
