@@ -21,7 +21,7 @@ TODO
   - [ ] multiselect
   - [x] configurable layout
   - [x] configurable mappings
-  - [ ] expose more highlight groups
+  - [x] expose more highlight groups
   - [x] lua type annotations
   - [ ] ansi parsing for `open`?
   - [ ] pattern support for `open_live`?

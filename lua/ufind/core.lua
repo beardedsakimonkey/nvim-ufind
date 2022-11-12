@@ -36,6 +36,7 @@ function Ufind.new(opt)
     for i = 1, #o.input_bufs do
         local prompt = i .. '/' .. num_groups .. view.PROMPT
         vim.fn.prompt_setprompt(o.input_bufs[i], prompt)
+        api.nvim_buf_add_highlight(o.input_bufs[i], -1, 'UfindPrompt', 0, 0, #prompt)
     end
 
     o.on_complete = opt.on_complete
@@ -174,7 +175,7 @@ function Ufind:use_virt_text(text)
     for _, buf in ipairs(self.input_bufs) do
         api.nvim_buf_clear_namespace(buf, self.virt_ns, 0, -1)
         api.nvim_buf_set_extmark(buf, self.virt_ns, 0, -1, {
-            virt_text = {{text, 'Comment'}},
+            virt_text = {{text, 'UfindResultCount'}},
             virt_text_pos = 'right_align'
         })
     end
