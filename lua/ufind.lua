@@ -4,11 +4,11 @@ local util = require('ufind.util')
 local api = vim.api
 local uv = vim.loop
 
----@alias GetValue fun(item: any): string
----@alias GetHighlights fun(item: any, line: string): {1: string, 2: number, 3: number}?
----@alias OnComplete fun(cmd: 'edit'|'split'|'vsplit'|'tabedit', item: any)
+---@alias UfGetValue fun(item: any): string
+---@alias UfGetHighlights fun(item: any, line: string): {1: string, 2: number, 3: number}?
+---@alias UfOnComplete fun(cmd: 'edit'|'split'|'vsplit'|'tabedit', item: any)
 
----@class Keymaps
+---@class UfKeymaps
 local default_keymaps = {
     quit = '<Esc>',
     open = '<CR>',
@@ -32,22 +32,22 @@ local default_layout = {
     input_on_top = true,
 }
 
----@class OpenConfig
+---@class UfOpenConfig
 local open_defaults = {
-    ---@type GetValue
+    ---@type UfGetValue
     get_value = function(item) return item end,
-    ---@type GetHighlights
+    ---@type UfGetHighlights
     get_highlights = nil,
-    ---@type OnComplete
+    ---@type UfOnComplete
     on_complete = function(cmd, item) vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(item)) end,
     pattern = '^(.*)$',
-    ---@type Layout
+    ---@type UfLayout
     layout = default_layout,
     keymaps = default_keymaps,
 }
 
 ---@param items any A sequential table of any type.
----@param config? OpenConfig
+---@param config? UfOpenConfig
 local function open(items, config)
     assert(type(items) == 'table')
     config = vim.tbl_deep_extend('keep', config or {}, open_defaults)
@@ -166,21 +166,21 @@ local render_results = util.schedule_wrap_t(
 )
 
 
----@class OpenLiveConfig
+---@class UfOpenLiveConfig
 local open_live_defaults = {
-    ---@type GetHighlights
+    ---@type UfGetHighlights
     get_highlights = nil,
-    ---@type OnComplete
+    ---@type UfOnComplete
     on_complete = function(cmd, item) vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(item)) end,
     ansi = false, -- whether to parse ansi escape codes
-    ---@type Layout
+    ---@type UfLayout
     layout = default_layout,
     keymaps = default_keymaps,
 }
 
 
 ---@param getcmd fun(query: string): string,string[]
----@param config? OpenLiveConfig
+---@param config? UfOpenLiveConfig
 local function open_live(getcmd, config)
     assert(type(getcmd) == 'function')
     config = vim.tbl_deep_extend('keep', config or {}, open_live_defaults)

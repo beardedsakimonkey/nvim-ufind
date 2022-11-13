@@ -15,7 +15,7 @@ end
 
 
 -- Precondition: has queries
----@param queries UfindQuery[]
+---@param queries UfQuery[]
 local function fuzzy_match(str, queries)
     if not str or #str == 0 or vim.tbl_isempty(queries) then return nil end
     str = str:lower()
@@ -56,7 +56,7 @@ local function fuzzy_match(str, queries)
 end
 
 
----@return UfindQuery?
+---@return UfQuery?
 local function parse_query(query_part)
     local invert, prefix, suffix = false, false, false
     local ts, te = 1, -1  -- term start/end
@@ -74,7 +74,7 @@ local function parse_query(query_part)
     end
     local term = query_part:sub(ts, te)
     return term and
-        ---@class UfindQuery
+        ---@class UfQuery
         {
             invert = invert,  -- !
             prefix = prefix,  -- ^
@@ -94,7 +94,7 @@ local function sort_queries(queries)
 end
 
 
----@return UfindQuery[][]
+---@return UfQuery[][]
 local function parse_queries(raw_queries)
     local query_sets = vim.tbl_map(function(raw_query)
         if raw_query:match('^%s*$') then -- is empty
