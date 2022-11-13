@@ -9,7 +9,7 @@ local color_name = {
     [7] = 'White',
 }
 
----@class UfHighlights
+---@class UfHighlight
 ---@field line number
 ---@field col_start number
 ---@field col_end number
@@ -23,10 +23,10 @@ local color_name = {
 
 ---@param line string
 ---@param linenr number
----@return UfHighlights, string
+---@return UfHighlight[], string
 local function parse(line, linenr)
     local offset = 0
-    ---@type UfHighlights
+    ---@type UfHighlight[]
     local hls = {}
     ---@type {1: number, 2: string}?
     local fg
