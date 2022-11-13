@@ -63,4 +63,16 @@ asserteq(
     {{index = 1, positions = {9, 10, 11}, score = 5}}
 )
 
+-- Exact match fails
+asserteq(
+    filter({"'la"}, {'foo.lua', 'bar.lua'}, pat),
+    {}
+)
+
+-- Exact match succeeds
+asserteq(
+    filter({"'fo"}, {'foo.lua', 'bar.lua'}, pat),
+    {{index = 1, positions = {1, 2}, score = 3}}
+)
+
 print('ok')

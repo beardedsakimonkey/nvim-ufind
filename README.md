@@ -25,7 +25,7 @@ TODO
   - [x] lua type annotations
   - [ ] ansi parsing for `open`?
   - [ ] pattern support for `open_live`?
-  - [ ] implement exact match query syntax
+  - [x] implement exact match query syntax
   - [ ] implement OR query syntax?
 
 Usage

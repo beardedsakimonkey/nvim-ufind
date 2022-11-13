@@ -22,26 +22,37 @@ local function fuzzy_match(str, queries)
     local positions = {}
     for _, q in ipairs(queries) do
         q.term = q.term:lower()
-        if q.prefix and q.suffix then
-            local match = str == q.term
+        if q.exact then  -- has '
+            local starti, endi = str:find(q.term, 1, true)
+            if not starti then
+                return nil
+            else
+                for i = starti, endi do
+                    table.insert(positions, i)
+                end
+            end
+        elseif q.prefix and q.suffix then  -- has ^ and $
+            local match = str == q.term  -- so do a full match
             if not q.invert and not match
                 or q.invert and match then
                 return nil
             end
-        elseif q.prefix then
+        elseif q.prefix then  -- has ^
             local match = vim.startswith(str, q.term)
             if not q.invert and not match
                 or q.invert and match then
                 return nil
             end
-        elseif q.suffix then
+        elseif q.suffix then  -- has $
             local match = vim.endswith(str, q.term)
             if not q.invert and not match
                 or q.invert and match then
                 return nil
             end
-        elseif q.invert then
-            if str:find(q.term, 1, true) then return nil end
+        elseif q.invert then  -- has !
+            if str:find(q.term, 1, true) then
+                return nil
+            end
         else
             local results = util.find_min_subsequence(str, q.term)
             if not results then return nil end
@@ -58,17 +69,24 @@ end
 
 ---@return UfQuery?
 local function parse_query(query_part)
-    local invert, prefix, suffix = false, false, false
+    local invert, prefix, exact, suffix = false, false, false, false
     local ts, te = 1, -1  -- term start/end
-    if query_part:sub(ts, ts) == '!' then
+    -- Check exact match first. A ' that comes after another sigil (! or ^) is
+    -- useless. If it comes before other sigils, we treat those as literal
+    -- characters instead.
+    if query_part:sub(ts, ts) == "'" then
+        ts = ts + 1
+        exact = true
+    end
+    if not exact and query_part:sub(ts, ts) == '!' then
         ts = ts + 1
         invert = true
     end
-    if query_part:sub(ts, ts) == '^' then
+    if not exact and query_part:sub(ts, ts) == '^' then
         ts = ts + 1
         prefix = true
     end
-    if query_part:sub(te) == '$' then
+    if not exact and query_part:sub(te) == '$' then
         te = te - 1
         suffix = true
     end
@@ -76,6 +94,7 @@ local function parse_query(query_part)
     return term and
         ---@class UfQuery
         {
+            exact = exact,    -- '
             invert = invert,  -- !
             prefix = prefix,  -- ^
             suffix = suffix,  -- $
