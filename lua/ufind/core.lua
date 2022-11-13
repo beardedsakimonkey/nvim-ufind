@@ -112,6 +112,7 @@ function Ufind:open_result(cmd)
 end
 
 
+---@return string
 function Ufind.get_query(buf)
     local buf_lines = api.nvim_buf_get_lines(buf, 0, 1, true)
     local query = buf_lines[1]
@@ -120,6 +121,7 @@ function Ufind.get_query(buf)
 end
 
 
+---@return string[]
 function Ufind:get_queries()
     return vim.tbl_map(self.get_query, self.input_bufs)
 end
