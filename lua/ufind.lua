@@ -54,7 +54,7 @@ local function open(items, config)
     assert(type(items) == 'table')
     config = vim.tbl_deep_extend('keep', config or {}, open_defaults)
     local pattern, num_groups = util.inject_empty_captures(config.pattern)
-    local uf = core.Ufind.new({
+    local uf = core.Uf.new({
         on_complete = config.on_complete,
         num_groups = num_groups,
         layout = config.layout,
@@ -64,12 +64,12 @@ local function open(items, config)
     -- Mapping from match index (essentially the line number of the selected
     -- result) to item index (the index of the corresponding item in  `items`).
     -- This is needed by `open_result` to pass the selected item to `on_complete`.
+    -- TODO: can remove this?
     local match_to_item = {}
 
     function uf:get_selected_item()
-        local cursor = api.nvim_win_get_cursor(self.result_win)
-        local row = cursor[1]
-        local item_idx = match_to_item[row]
+        local cursor = self:get_cursor()
+        local item_idx = match_to_item[cursor]
         local item = items[item_idx]
         return item
     end
@@ -78,10 +78,12 @@ local function open(items, config)
         return config.get_value(item) -- TODO: warn on nil?
     end, items)
 
-    local function use_hl_lines(matches)
-        if not config.get_highlights then return end
+    local function use_hl_lines()
+        if not config.get_highlights then
+            return
+        end
         api.nvim_buf_clear_namespace(uf.result_buf, uf.line_ns, 0, -1)
-        for i, match in ipairs(matches) do
+        for i, match in ipairs(uf:get_visible_matches()) do
             local hls = config.get_highlights(items[match.index], lines[match.index])
             for _, hl in ipairs(hls or {}) do
                 api.nvim_buf_add_highlight(uf.result_buf, uf.line_ns, hl[1], i-1, hl[2], hl[3])
@@ -89,17 +91,23 @@ local function open(items, config)
         end
     end
 
+    function uf:redraw_results()
+        api.nvim_buf_set_lines(self.result_buf, 0, -1, true, vim.tbl_map(function(match)
+            return lines[match.index]
+        end, self:get_visible_matches()))
+        use_hl_lines()
+        self:use_hl_matches()
+    end
+
     local function on_lines()
         if not api.nvim_buf_is_valid(uf.result_buf) then  -- window has been closed
             return
         end
-        uf:set_cursor(1)
         local matches = require('ufind.fuzzy_filter').filter(uf:get_queries(), lines, pattern)
-        api.nvim_buf_set_lines(uf.result_buf, 0, -1, true, vim.tbl_map(function(match)
-            return lines[match.index]
-        end, matches))
-        use_hl_lines(matches)
-        uf:use_hl_matches(matches)
+        uf.matches = matches  -- store matches for when we scroll
+        uf:move_cursor(-math.huge)  -- move cursor to top
+        uf:redraw_results()  -- always redraw
+
         uf:use_virt_text(#matches .. ' / ' .. #items)
 
         local new_match_to_item = {}
@@ -121,53 +129,6 @@ local function open(items, config)
 end
 
 
-local render_results = util.schedule_wrap_t(
-    function(results, result_buf, input_buf, virt_ns, line_ns, ansi)
-        if not api.nvim_buf_is_valid(result_buf) then  -- window has been closed
-            return
-        end
-        local lines = vim.split(table.concat(results), '\n', {trimempty = true})
-        if ansi then
-            local lines_noansi = {}
-            local all_hls = {}
-            for i, line in ipairs(lines) do
-                local hls, line_noansi = require('ufind.ansi').parse(line, i)
-                table.insert(lines_noansi, line_noansi)
-                for _, hl in ipairs(hls) do
-                    table.insert(all_hls, hl)
-                end
-            end
-            api.nvim_buf_set_lines(result_buf, 0, -1, true, lines_noansi)
-            api.nvim_buf_clear_namespace(result_buf, line_ns, 0, -1)
-            for _, hl in ipairs(all_hls) do
-                local exists = pcall(api.nvim_get_hl_by_name, hl.hl_group, true)
-                if not exists then
-                    api.nvim_set_hl(0, hl.hl_group, {
-                        fg = hl.fg,
-                        bg = hl.bg,
-                        ctermfg = hl.fg,
-                        ctermbg = hl.bg,
-                        bold = hl.bold,
-                        italic = hl.italic,
-                        underline = hl.underline,
-                        reverse = hl.reverse,
-                    })
-                end
-                api.nvim_buf_add_highlight(result_buf, line_ns, hl.hl_group, hl.line-1, hl.col_start-1, hl.col_end-1)
-            end
-        else
-            api.nvim_buf_set_lines(result_buf, 0, -1, true, lines)
-        end
-        -- Set virttext
-        api.nvim_buf_clear_namespace(input_buf, virt_ns, 0, -1)
-        api.nvim_buf_set_extmark(input_buf, virt_ns, 0, -1, {
-            virt_text = {{tostring(#lines), 'Comment'}},
-            virt_text_pos = 'right_align'
-        })
-    end
-)
-
-
 ---@class UfOpenLiveConfig
 local open_live_defaults = {
     ---@type UfGetHighlights
@@ -186,16 +147,15 @@ local open_live_defaults = {
 local function open_live(getcmd, config)
     assert(type(getcmd) == 'function')
     config = vim.tbl_deep_extend('keep', config or {}, open_live_defaults)
-    local uf = core.Ufind.new({
+    local uf = core.Uf.new({
         on_complete = config.on_complete,
         layout = config.layout,
         keymaps = config.keymaps,
     })
 
     function uf:get_selected_item()
-        local cursor = api.nvim_win_get_cursor(self.result_win)
-        local row = cursor[1]
-        local lines = api.nvim_buf_get_lines(self.result_buf, row-1, row, false)
+        local cursor = self:get_cursor()
+        local lines = api.nvim_buf_get_lines(self.result_buf, cursor-1, cursor, false)
         return lines[1]
     end
 
@@ -212,8 +172,54 @@ local function open_live(getcmd, config)
         once = true,  -- for some reason, BufUnload fires twice otherwise
     })
 
+    function uf:redraw_results()
+        if config.ansi then
+            local lines_noansi = {}
+            local all_hls = {}
+            for i, line in ipairs(self:get_visible_matches()) do
+                local hls, line_noansi = require('ufind.ansi').parse(line, i)
+                table.insert(lines_noansi, line_noansi)
+                for _, hl in ipairs(hls) do -- flatten
+                    table.insert(all_hls, hl)
+                end
+            end
+            api.nvim_buf_clear_namespace(self.result_buf, self.line_ns, 0, -1)
+            api.nvim_buf_set_lines(self.result_buf, 0, -1, true, lines_noansi)
+            for j, hl in ipairs(all_hls) do
+                -- TODO: create these eagerly on open?
+                local exists = pcall(api.nvim_get_hl_by_name, hl.hl_group, true)
+                if not exists then
+                    api.nvim_set_hl(0, hl.hl_group, {
+                        fg = hl.fg,
+                        bg = hl.bg,
+                        ctermfg = hl.fg,
+                        ctermbg = hl.bg,
+                        bold = hl.bold,
+                        italic = hl.italic,
+                        underline = hl.underline,
+                        reverse = hl.reverse,
+                    })
+                end
+                api.nvim_buf_add_highlight(self.result_buf, self.line_ns, hl.hl_group, hl.line-1, hl.col_start-1, hl.col_end-1)
+            end
+        else
+            api.nvim_buf_set_lines(self.result_buf, 0, -1, true, self:get_visible_matches())
+        end
+    end
+
+    -- Note: hot path (called on every chunk of stdout)
+    local render_results = util.schedule_wrap_t(function(results)
+        if not api.nvim_buf_is_valid(uf.result_buf) then  -- window has been closed
+            return
+        end
+        local lines = vim.split(table.concat(results), '\n', {trimempty = true})
+        uf.matches = lines  -- store matches for when we scroll
+        uf:redraw_results()
+        uf:use_virt_text(tostring(#lines))
+    end)
+
     local function on_lines()
-        uf:set_cursor(1)
+        uf:move_cursor(-math.huge)  -- move cursor to top
         if prev_handle and prev_handle:is_active() then
             prev_handle:kill(uv.constants.SIGTERM)
             -- Don't close the handle; that'll happen in on_exit
@@ -232,7 +238,7 @@ local function open_live(getcmd, config)
                 util.err(table.concat(stderrbuf))
             end
             if exit_code ~= 0 and signal ~= uv.constants.SIGTERM then
-                render_results({}, uf.result_buf, uf.input_bufs[1], uf.virt_ns, uf.line_ns, config.ansi)
+                render_results({})
             end
             handle:close()
         end)
@@ -241,7 +247,7 @@ local function open_live(getcmd, config)
             assert(not err, err)
             if chunk then
                 table.insert(stdoutbuf, chunk)
-                render_results(stdoutbuf, uf.result_buf, uf.input_bufs[1], uf.virt_ns, uf.line_ns, config.ansi)
+                render_results(stdoutbuf)
             end
         end)
         stderr:read_start(function(err, chunk)  -- on stderr

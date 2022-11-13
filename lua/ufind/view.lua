@@ -48,6 +48,7 @@ local function create_wins(input_buf, result_buf, cfg)
         vim.tbl_extend('force', {style = 'minimal', focusable = false}, result_win_layout)
     )
     vim.wo[result_win].cursorline = true
+    vim.wo[result_win].scrolloff = 0
     vim.wo[result_win].winhighlight = 'NormalFloat:UfindNormal,FloatBorder:UfindBorder,CursorLine:UfindCursorLine'
     vim.wo[input_win].winhighlight  = 'NormalFloat:UfindNormal,FloatBorder:UfindBorder'
     return input_win, result_win

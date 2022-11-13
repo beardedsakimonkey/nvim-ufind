@@ -124,6 +124,11 @@ local function err(...)
     end)
 end
 
+
+local function errf(str, ...)
+    err(string.format(str, ...))
+end
+
 return {
     find_min_subsequence = find_min_subsequence,
     tbl_some = tbl_some,
@@ -133,4 +138,5 @@ return {
     pack = pack,
     schedule_wrap_t = schedule_wrap_t,
     err = err,
+    errf = errf,
 }
