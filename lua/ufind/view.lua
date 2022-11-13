@@ -74,9 +74,17 @@ local function create_input_buf()
     return buf
 end
 
+
+local function create_result_buf()
+    local buf = api.nvim_create_buf(false, true)
+    vim.bo[buf].undolevels = -1
+    return buf
+end
+
 return {
     PROMPT = PROMPT,
     create_wins = create_wins,
     handle_vimresized = handle_vimresized,
     create_input_buf = create_input_buf,
+    create_result_buf = create_result_buf,
 }

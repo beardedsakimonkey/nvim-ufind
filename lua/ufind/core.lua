@@ -41,7 +41,7 @@ function Ufind.new(opt)
 
     o.on_complete = opt.on_complete
     o.orig_win = api.nvim_get_current_win()
-    o.result_buf = api.nvim_create_buf(false, true)
+    o.result_buf = view.create_result_buf()
     o.input_win, o.result_win = view.create_wins(o.input_bufs[1], o.result_buf, opt.layout)
     o.vimresized_auid = view.handle_vimresized(o.input_win, o.result_win, opt.layout)
 
