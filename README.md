@@ -24,9 +24,9 @@ TODO
   - [x] expose more highlight groups
   - [x] lua type annotations
   - [ ] ansi parsing for `open`?
-  - [ ] pattern support for `open_live`?
   - [x] implement exact match query syntax
   - [ ] implement OR query syntax?
+  - [ ] documentation
 
 Usage
 -----
