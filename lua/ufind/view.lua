@@ -2,12 +2,6 @@ local api = vim.api
 
 local PROMPT = '> '
 
----@class UfLayout
----@field border? 'none'|'single'|'double'|'rounded'|'solid'|string[]
----@field height? number
----@field width? number
----@field input_on_top? boolean
-
 ---@param cfg UfLayout
 local function get_win_layouts(cfg)
     local has_border = cfg.border ~= 'none'
@@ -40,8 +34,6 @@ local function get_win_layouts(cfg)
 end
 
 
----@param input_buf number
----@param result_buf number
 ---@param cfg UfLayout
 local function create_wins(input_buf, result_buf, cfg)
     local input_win_layout, result_win_layout = get_win_layouts(cfg)
@@ -62,8 +54,6 @@ local function create_wins(input_buf, result_buf, cfg)
 end
 
 
----@param input_win number
----@param result_win number
 ---@param cfg UfLayout
 local function handle_vimresized(input_win, result_win, cfg)
     local function relayout()

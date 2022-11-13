@@ -25,7 +25,9 @@ local default_keymaps = {
     next_scope = '<C-n>',
 }
 
+---@class UfLayout
 local default_layout = {
+    ---@type 'none'|'single'|'double'|'rounded'|'solid'|string[]
     border = 'none',
     height = 0.8,
     width = 0.7,
