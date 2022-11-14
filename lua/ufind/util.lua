@@ -11,11 +11,6 @@ local function tbl_some(fn, tbl)
 end
 
 
-local function clamp(v, min, max)
-    return math.min(math.max(v, min), max)
-end
-
-
 ---Wrapper around `vim.keymap.set` that handles a list of lhs's
 local function keymap(mode, lhs, rhs, opts)
     if type(lhs) == 'string' then
@@ -83,7 +78,6 @@ end
 
 return {
     tbl_some = tbl_some,
-    clamp = clamp,
     keymap = keymap,
     inject_empty_captures = inject_empty_captures,
     pack = pack,
