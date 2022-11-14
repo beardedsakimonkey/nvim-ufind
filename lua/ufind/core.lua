@@ -26,19 +26,19 @@ function Uf.new(opt)
     local o = {}
     setmetatable(o, {__index = Uf})
 
-    local num_groups = opt.num_groups or 1
+    local num_inputs = opt.num_inputs or 1
     o.cur_input = 1
     o.input_bufs = {}
     o.matches = {}
 
     -- Create input buffers
-    for _ = 1, num_groups do
+    for _ = 1, num_inputs do
         table.insert(o.input_bufs, view.create_input_buf())
     end
 
     -- Set prompts
     for i = 1, #o.input_bufs do
-        local prompt = i .. '/' .. num_groups .. view.PROMPT
+        local prompt = i .. '/' .. num_inputs .. view.PROMPT
         vim.fn.prompt_setprompt(o.input_bufs[i], prompt)
         api.nvim_buf_add_highlight(o.input_bufs[i], -1, 'UfindPrompt', 0, 0, #prompt)
     end

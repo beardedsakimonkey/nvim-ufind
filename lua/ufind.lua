@@ -53,25 +53,18 @@ local open_defaults = {
 local function open(items, config)
     assert(type(items) == 'table')
     config = vim.tbl_deep_extend('keep', config or {}, open_defaults)
-    local pattern, num_groups = util.inject_empty_captures(config.pattern)
+    local pattern, num_captures = util.inject_empty_captures(config.pattern)
     local uf = core.Uf.new({
         on_complete = config.on_complete,
-        num_groups = num_groups,
+        num_inputs = num_captures,
         layout = config.layout,
         keymaps = config.keymaps,
     })
 
-    -- Mapping from match index (essentially the line number of the selected
-    -- result) to item index (the index of the corresponding item in  `items`).
-    -- This is needed by `open_result` to pass the selected item to `on_complete`.
-    -- TODO: can remove this?
-    local match_to_item = {}
-
     function uf:get_selected_item()
         local cursor = self:get_cursor()
-        local item_idx = match_to_item[cursor]
-        local item = items[item_idx]
-        return item
+        local matches = self:get_visible_matches()
+        return items[matches[cursor].index]
     end
 
     local lines = vim.tbl_map(function(item)
@@ -109,12 +102,6 @@ local function open(items, config)
         uf:redraw_results()  -- always redraw
 
         uf:use_virt_text(#matches .. ' / ' .. #items)
-
-        local new_match_to_item = {}
-        for i, match in ipairs(matches) do
-            new_match_to_item[i] = match.index
-        end
-        match_to_item = new_match_to_item
     end
 
     for _, buf in ipairs(uf.input_bufs) do
