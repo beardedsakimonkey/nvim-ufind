@@ -1,7 +1,7 @@
 local fuzzy_filter = require('ufind.fuzzy_filter')
 local util = require('ufind.util')
 local filter = fuzzy_filter.filter
-local find_min_subsequence = util.find_min_subsequence
+local find_min_subsequence = fuzzy_filter._find_min_subsequence
 
 local function asserteq(a, b)
     assert(

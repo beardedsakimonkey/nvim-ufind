@@ -1,5 +1,53 @@
 local util = require('ufind.util')
 
+---Find the minimum subsequence in `str` containing `chars` (in order) using a
+---sliding window algorithm.
+local function find_min_subsequence(str, chars)
+    local s, c = 1, 1
+    local seq = {
+        length = -1,
+        start_index = nil,
+        positions = {},
+    }
+    while s <= #str do
+        -- Increment `s` until it is on the character that `c` is on
+        while c <= #chars and s <= #str do
+            if chars:sub(c, c) == str:sub(s, s) then
+                break
+            end
+            s = s + 1
+        end
+        if s > #str then break end
+        -- Find the next valid subsequence in `str`
+        local new_min = {
+            length = 1,
+            start_index = s,
+            positions = {},
+        }
+        while c <= #chars and s <= #str do
+            if chars:sub(c, c) ~= str:sub(s, s) then
+                s = s + 1
+                new_min.length = new_min.length + 1
+            else
+                table.insert(new_min.positions, s)
+                c = c + 1
+                s = s + 1
+            end
+        end
+        if c > #chars and (new_min.length <= seq.length or seq.length == -1) then
+            seq = new_min
+        end
+        c = 1
+        s = new_min.start_index + 1
+    end
+    if seq.start_index == nil then
+        return nil
+    else
+        return seq.positions
+    end
+end
+
+
 -- TODO: Prioritize by # matches to tail length ratio
 local function calc_score(positions, str)
     local tail = str:find('[^/]+/?$')
@@ -54,7 +102,7 @@ local function fuzzy_match(str, queries)
                 return nil
             end
         else
-            local results = util.find_min_subsequence(str, q.term)
+            local results = find_min_subsequence(str, q.term)
             if not results then return nil end
             for _, pos in ipairs(results) do
                 table.insert(positions, pos)
@@ -183,4 +231,7 @@ local function filter(raw_queries, lines, pattern)
     return res
 end
 
-return {filter = filter}
+return {
+    filter = filter,
+    _find_min_subsequence = find_min_subsequence,  -- for testing
+}
