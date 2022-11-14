@@ -21,6 +21,8 @@ local default_keymaps = {
     page_down = {'<C-f>', '<PageDown>'},
     home = '<Home>',
     ['end'] = '<End>',
+    wheel_up = '<ScrollWheelUp>',
+    wheel_down = '<ScrollWheelDown>',
     prev_scope = '<C-p>',
     next_scope = '<C-n>',
 }

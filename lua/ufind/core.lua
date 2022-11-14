@@ -155,7 +155,7 @@ function Uf:move_cursor(offset)
 end
 
 
----@param m 'up'|'down'|'page_up'|'page_down'|'home'|'end' Cursor motion
+---@param m 'up'|'down'|'page_up'|'page_down'|'home'|'end'|'wheel_up'|'wheel_down' Cursor motion
 function Uf:move_cursor_and_redraw(m)
     local need_redraw
     if m == 'up' or m == 'down' then
@@ -165,6 +165,21 @@ function Uf:move_cursor_and_redraw(m)
         need_redraw = self:move_cursor(m == 'page_up' and -page or page)
     elseif m == 'home' or m == 'end' then
         need_redraw = self:move_cursor(m == 'home' and -math.huge or math.huge)
+    elseif m == 'wheel_up' or m == 'wheel_down' then
+        local step
+        if self.mousescroll then
+            step = self.mousescroll
+        else
+            local opt = vim.opt.mousescroll:get()
+            if opt[1] and vim.startswith(opt[1], 'ver:') then
+                step = tonumber(opt[1]:sub(5))
+            elseif opt[2] and vim.startswith(opt[2], 'ver:') then
+                step = tonumber(opt[2]:sub(5))
+            end
+            step = step or 3
+            self.mousescroll = step  -- cache it
+        end
+        need_redraw = self:move_cursor(m == 'wheel_up' and -step or step)
     end
     if need_redraw then
         self:redraw_results()
@@ -231,6 +246,10 @@ function Uf:setup_keymaps(buf, keymaps)
         elseif k == 'home' then
             util.keymap('i', v, function() self:move_cursor_and_redraw(k) end, opts)
         elseif k == 'end' then
+            util.keymap('i', v, function() self:move_cursor_and_redraw(k) end, opts)
+        elseif k == 'wheel_up' then
+            util.keymap('i', v, function() self:move_cursor_and_redraw(k) end, opts)
+        elseif k == 'wheel_down' then
             util.keymap('i', v, function() self:move_cursor_and_redraw(k) end, opts)
         elseif k == 'prev_scope' then
             util.keymap('i', '<C-p>', function() self:switch_input_buf(false) end, opts)
