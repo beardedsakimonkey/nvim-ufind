@@ -184,14 +184,14 @@ local function open_live(getcmd, config)
             local all_hls = {}
             for i, line in ipairs(self:get_visible_matches()) do
                 local hls, line_noansi = require('ufind.ansi').parse(line, i)
-                table.insert(lines_noansi, line_noansi)
+                lines_noansi[#lines_noansi+1] = line_noansi
                 for _, hl in ipairs(hls) do -- flatten
-                    table.insert(all_hls, hl)
+                    all_hls[#all_hls+1] = hl
                 end
             end
             api.nvim_buf_clear_namespace(self.result_buf, self.line_ns, 0, -1)
             api.nvim_buf_set_lines(self.result_buf, 0, -1, true, lines_noansi)
-            for j, hl in ipairs(all_hls) do
+            for _, hl in ipairs(all_hls) do
                 -- TODO: create these eagerly on open?
                 local exists = pcall(api.nvim_get_hl_by_name, hl.hl_group, true)
                 if not exists then
@@ -252,14 +252,14 @@ local function open_live(getcmd, config)
         stdout:read_start(function(err, chunk)  -- on stdout
             assert(not err, err)
             if chunk then
-                table.insert(stdoutbuf, chunk)
+                stdoutbuf[#stdoutbuf+1] = chunk
                 render_results(stdoutbuf)
             end
         end)
         stderr:read_start(function(err, chunk)  -- on stderr
             assert(not err, err)
             if chunk then
-                table.insert(stderrbuf, chunk)
+                stderrbuf[#stderrbuf+1] = chunk
             end
         end)
     end

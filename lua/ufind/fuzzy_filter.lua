@@ -29,7 +29,7 @@ local function find_min_subsequence(str, chars)
                 s = s + 1
                 new_min.length = new_min.length + 1
             else
-                table.insert(new_min.positions, s)
+                new_min.positions[#new_min.positions+1] = s
                 c = c + 1
                 s = s + 1
             end
@@ -76,7 +76,7 @@ local function fuzzy_match(str, queries)
                 return nil
             else
                 for i = starti, endi do
-                    table.insert(positions, i)
+                    positions[#positions+1] = i
                 end
             end
         elseif q.prefix and q.suffix then  -- has ^ and $
@@ -105,7 +105,7 @@ local function fuzzy_match(str, queries)
             local results = find_min_subsequence(str, q.term)
             if not results then return nil end
             for _, pos in ipairs(results) do
-                table.insert(positions, pos)
+                positions[#positions+1] = pos
             end
         end
     end
@@ -169,7 +169,7 @@ local function parse_queries(raw_queries)
         end
         local query_set = {}
         for query_part in vim.gsplit(raw_query, " +") do
-            table.insert(query_set, parse_query(query_part))  -- inserting `nil` no-ops
+            query_set[#query_set+1] = parse_query(query_part)
         end
         return query_set
     end, raw_queries)
@@ -194,7 +194,7 @@ local function filter(raw_queries, lines, pattern)
 
     if not has_any_query then
         for i = 1, #lines do
-            table.insert(res, {index = i, positions = {}, score = 0})
+            res[#res+1] = {index = i, positions = {}, score = 0}
         end
         return res
     end
@@ -212,7 +212,7 @@ local function filter(raw_queries, lines, pattern)
                 local mpos, mscore = fuzzy_match(cap, query_set)
                 if mpos then  -- match success
                     for _, mp in ipairs(mpos) do
-                        table.insert(pos, cap_pos-1+mp)
+                        pos[#pos+1] = cap_pos - 1 + mp
                     end
                     score = score + mscore
                 else
@@ -223,7 +223,7 @@ local function filter(raw_queries, lines, pattern)
             j = j + 1
         end
         if not fail then
-            table.insert(res, {index = i, positions = pos, score = score})
+            res[#res+1] = {index = i, positions = pos, score = score}
         end
     end
 

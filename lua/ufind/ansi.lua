@@ -63,52 +63,52 @@ local function parse(line, linenr)
 
                 if param_num == 0 or param_num == 22 then  -- normal intensity
                     if bold then
-                        table.insert(hls, {
+                        hls[#hls+1] = {
                             line = linenr,
                             col_start = bold,
                             col_end = pos,
                             bold = true,
                             hl_group = 'ufind_bold',
-                        })
+                        }
                     end
                     bold = nil
                 end
 
                 if param_num == 0 or param_num == 23 then  -- not italic
                     if italic then
-                        table.insert(hls, {
+                        hls[#hls+1] = {
                             line = linenr,
                             col_start = italic,
                             col_end = pos,
                             italic = true,
                             hl_group = 'ufind_italic',
-                        })
+                        }
                     end
                     italic = nil
                 end
 
                 if param_num == 0 or param_num == 24 then  -- not underlined
                     if underline then
-                        table.insert(hls, {
+                        hls[#hls+1] = {
                             line = linenr,
                             col_start = underline,
                             col_end = pos,
                             underline = true,
                             hl_group = 'ufind_underline',
-                        })
+                        }
                     end
                     underline = nil
                 end
 
                 if param_num == 0 or param_num == 27 then  -- not reversed
                     if reverse then
-                        table.insert(hls, {
+                        hls[#hls+1] = {
                             line = linenr,
                             col_start = reverse,
                             col_end = pos,
                             reverse = true,
                             hl_group = 'ufind_reverse',
-                        })
+                        }
                     end
                     reverse = nil
                 end
@@ -116,13 +116,13 @@ local function parse(line, linenr)
                 if param_num == 0 or
                     param_num >= 30 and param_num <= 37 then  -- set foreground color
                     if fg then
-                        table.insert(hls, {
+                        hls[#hls+1] = {
                             line = linenr,
                             col_start = fg[1],
                             col_end = pos,
                             fg = fg[2],
                             hl_group = 'ufind_fg_' .. fg[2],
-                        })
+                        }
                     end
                     if param_num == 0 then
                         fg = nil
@@ -134,13 +134,13 @@ local function parse(line, linenr)
                 if param_num == 0 or
                     param_num >= 40 and param_num <= 47 then  -- set background color
                     if bg then
-                        table.insert(hls, {
+                        hls[#hls+1] = {
                             line = linenr,
                             col_start = bg[1],
                             col_end = pos,
                             bg = bg[2],
                             hl_group = 'ufind_bg_' .. bg[2],
-                        })
+                        }
                     end
                     if param_num == 0 then
                         bg = nil

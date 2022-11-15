@@ -33,7 +33,7 @@ function Uf.new(opt)
 
     -- Create input buffers
     for _ = 1, num_inputs do
-        table.insert(o.input_bufs, view.create_input_buf())
+        o.input_bufs[#o.input_bufs+1] = view.create_input_buf()
     end
 
     -- Set prompts
@@ -254,7 +254,7 @@ function Uf:get_visible_matches()
     local vp_height = self:get_vp_height()
     local to = math.min(self.top + vp_height, #self.matches)
     for i = self.top, to do
-        table.insert(visible_matches, self.matches[i])
+        visible_matches[#visible_matches+1] = self.matches[i]
     end
     return visible_matches
 end
