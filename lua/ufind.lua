@@ -50,12 +50,29 @@ local open_defaults = {
     keymaps = default_keymaps,
 }
 
+
+local function inject_empty_captures(pat)
+    local n = 0  -- number of captures found
+    local sub = string.gsub(pat, '%%?%b()', function(match)
+        -- TODO: we shouldn't inject for [(]%)
+        if vim.endswith(match, '()') or  -- (), %b()
+            vim.startswith(match, '%(') then  -- %(
+            return
+        end
+        n = n + 1
+        return '()' .. match
+    end)
+    assert(n ~= 0, ('Expected at least one capture in pattern %q'):format(pat))
+    return sub, n
+end
+
+
 ---@param items any A sequential table of any type.
 ---@param config? UfOpenConfig
 local function open(items, config)
     assert(type(items) == 'table')
     config = vim.tbl_deep_extend('keep', config or {}, open_defaults)
-    local pattern, num_captures = util.inject_empty_captures(config.pattern)
+    local pattern, num_captures = inject_empty_captures(config.pattern)
     local uf = core.Uf.new({
         on_complete = config.on_complete,
         num_inputs = num_captures,
