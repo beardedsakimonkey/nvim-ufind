@@ -182,19 +182,11 @@ local function open_live(getcmd, config)
 
     function uf:redraw_results()
         if config.ansi then
-            local lines = {}
-            local all_hls = {}
-            for i, line in ipairs(self:get_visible_matches()) do
-                local line_noansi, hls = require('ufind.ansi').parse(line, i)
-                lines[#lines+1] = line_noansi
-                for _, hl in ipairs(hls) do -- flatten
-                    all_hls[#all_hls+1] = hl
-                end
-            end
+            local lines, hls = require'ufind.ansi'.parse(self:get_visible_matches())
             api.nvim_buf_clear_namespace(self.result_buf, self.line_ns, 0, -1)
             api.nvim_buf_set_lines(self.result_buf, 0, -1, true, lines)
             -- Note: need to add highlights *after* buf_set_lines
-            for _, hl in ipairs(all_hls) do
+            for _, hl in ipairs(hls) do
                 api.nvim_buf_add_highlight(self.result_buf, self.line_ns, hl.hl_group, hl.line-1, hl.col_start-1, hl.col_end-1)
             end
         else

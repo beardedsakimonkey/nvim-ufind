@@ -7,122 +7,126 @@ local uv = vim.loop
 ---@field col_end number
 ---@field hl_group string
 
----@param line string
----@param linenr number
----@return string, UfHighlight[]
-local function parse(line, linenr)
-    local offset = 0
+---@param lines string[]
+---@return string[], UfHighlight[]
+local function parse(lines)
     ---@type UfHighlight[]
     local hls = {}
-    ---@type number[]?
-    local fg_start
-    ---@type number[]?
-    local bg_start
-    ---@type number?
-    local bold_start
-    ---@type number?
-    local italic_start
-    ---@type number?
-    local underline_start
-    ---@type number?
-    local reverse_start
+    local lines_noansi = {}
 
-    -- NOTE: CSI is typically represented with a 2-byte sequence (0x1b5b). To
-    -- save space, it can also be represented with a 1-byte code (0x9b). But,
-    -- since this can conflict with codepoints in other modern encodings, the
-    -- 2-byte representation is typically used. So, we only scan for that one.
-    -- Ref: https://en.wikipedia.org/wiki/ANSI_escape_code#Fe_Escape_sequences
-    local line_noansi = line:gsub('()\27%[([0-9;]-)([\64-\126])', function(pos, params, final)
-        if final == 'm' then  -- final byte indicates an SGR sequence
-            pos = pos + offset  -- adjust pos for any previous substitutions
-            for param in vim.gsplit(params, ';', true) do
-                local p = tonumber(param) or 0
-                if p == 1 then  -- bold
-                    bold_start = pos
-                elseif p == 3 then  -- italic
-                    italic_start = pos
-                elseif p == 4 then  -- underline
-                    underline_start = pos
-                elseif p == 7 then  -- reverse
-                    reverse_start = pos
-                end
-                if (p == 0 or p == 22) and bold_start then  -- end bold
-                    hls[#hls+1] = {
-                        line = linenr,
-                        col_start = bold_start,
-                        col_end = pos,
-                        hl_group = 'ufind_bold',
-                    }
-                    bold_start = nil
-                end
-                if (p == 0 or p == 23) and italic_start then  -- end italic
-                    hls[#hls+1] = {
-                        line = linenr,
-                        col_start = italic_start,
-                        col_end = pos,
-                        hl_group = 'ufind_italic',
-                    }
-                    italic_start = nil
-                end
-                if (p == 0 or p == 24) and underline_start then  -- end underline
-                    hls[#hls+1] = {
-                        line = linenr,
-                        col_start = underline_start,
-                        col_end = pos,
-                        hl_group = 'ufind_underline',
-                    }
-                    underline_start = nil
-                end
-                if (p == 0 or p == 27) and reverse_start then  -- end reverse
-                    hls[#hls+1] = {
-                        line = linenr,
-                        col_start = reverse_start,
-                        col_end = pos,
-                        hl_group = 'ufind_reverse',
-                    }
-                    reverse_start = nil
-                end
+    for linenr, line in ipairs(lines) do
+        local offset = 0
+        ---@type number[]?
+        local fg_start
+        ---@type number[]?
+        local bg_start
+        ---@type number?
+        local bold_start
+        ---@type number?
+        local italic_start
+        ---@type number?
+        local underline_start
+        ---@type number?
+        local reverse_start
 
-                -- Note: fg/bg color can also be ended by setting a different fg/bg
-                -- color.
-                if p == 0 or p >= 30 and p <= 37 then  -- end fg color
-                    if fg_start then
+        -- NOTE: CSI is typically represented with a 2-byte sequence (0x1b5b). To
+        -- save space, it can also be represented with a 1-byte code (0x9b). But,
+        -- since this can conflict with codepoints in other modern encodings, the
+        -- 2-byte representation is typically used. So, we only scan for that one.
+        -- Ref: https://en.wikipedia.org/wiki/ANSI_escape_code#Fe_Escape_sequences
+        local line_noansi = line:gsub('()\27%[([0-9;]-)([\64-\126])', function(pos, params, final)
+            if final == 'm' then  -- final byte indicates an SGR sequence
+                pos = pos + offset  -- adjust pos for any previous substitutions
+                for param in vim.gsplit(params, ';', true) do
+                    local p = tonumber(param) or 0
+                    if p == 1 then  -- bold
+                        bold_start = pos
+                    elseif p == 3 then  -- italic
+                        italic_start = pos
+                    elseif p == 4 then  -- underline
+                        underline_start = pos
+                    elseif p == 7 then  -- reverse
+                        reverse_start = pos
+                    end
+                    if (p == 0 or p == 22) and bold_start then  -- end bold
                         hls[#hls+1] = {
                             line = linenr,
-                            col_start = fg_start[1],
+                            col_start = bold_start,
                             col_end = pos,
-                            hl_group = 'ufind_fg' .. fg_start[2],
+                            hl_group = 'ufind_bold',
                         }
-                        fg_start = nil
+                        bold_start = nil
                     end
-                    if p == 0 then
-                        fg_start = nil
-                    else
-                        fg_start = {pos, p - 30}
-                    end
-                end
-                if p == 0 or p >= 40 and p <= 47 then  -- end bg color
-                    if bg_start then
+                    if (p == 0 or p == 23) and italic_start then  -- end italic
                         hls[#hls+1] = {
                             line = linenr,
-                            col_start = bg_start[1],
+                            col_start = italic_start,
                             col_end = pos,
-                            hl_group = 'ufind_bg' .. bg_start[2],
+                            hl_group = 'ufind_italic',
                         }
-                        bg_start = nil
+                        italic_start = nil
                     end
-                    if p == 0 then
-                        bg_start = nil
-                    else
-                        bg_start = {pos, p - 40}
+                    if (p == 0 or p == 24) and underline_start then  -- end underline
+                        hls[#hls+1] = {
+                            line = linenr,
+                            col_start = underline_start,
+                            col_end = pos,
+                            hl_group = 'ufind_underline',
+                        }
+                        underline_start = nil
                     end
-                end
-            end  -- end for loop
-        end
-        offset = offset - 3 - #params
-        return ''
-    end)
-    return line_noansi, hls
+                    if (p == 0 or p == 27) and reverse_start then  -- end reverse
+                        hls[#hls+1] = {
+                            line = linenr,
+                            col_start = reverse_start,
+                            col_end = pos,
+                            hl_group = 'ufind_reverse',
+                        }
+                        reverse_start = nil
+                    end
+
+                    -- Note: fg/bg color can also be ended by setting a different fg/bg
+                    -- color.
+                    if p == 0 or p >= 30 and p <= 37 then  -- end fg color
+                        if fg_start then
+                            hls[#hls+1] = {
+                                line = linenr,
+                                col_start = fg_start[1],
+                                col_end = pos,
+                                hl_group = 'ufind_fg' .. fg_start[2],
+                            }
+                            fg_start = nil
+                        end
+                        if p == 0 then
+                            fg_start = nil
+                        else
+                            fg_start = {pos, p - 30}
+                        end
+                    end
+                    if p == 0 or p >= 40 and p <= 47 then  -- end bg color
+                        if bg_start then
+                            hls[#hls+1] = {
+                                line = linenr,
+                                col_start = bg_start[1],
+                                col_end = pos,
+                                hl_group = 'ufind_bg' .. bg_start[2],
+                            }
+                            bg_start = nil
+                        end
+                        if p == 0 then
+                            bg_start = nil
+                        else
+                            bg_start = {pos, p - 40}
+                        end
+                    end
+                end  -- end for loop
+            end
+            offset = offset - 3 - #params
+            return ''
+        end)
+        lines_noansi[#lines_noansi+1] = line_noansi
+    end
+    return lines_noansi, hls
 end
 
 
