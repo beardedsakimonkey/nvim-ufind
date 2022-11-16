@@ -14,8 +14,7 @@ local api = vim.api
 ---@field result_win number
 ---@field vimresized_auid number
 ---@field top number 1-indexed
----@field match_ns number
----@field line_ns number
+---@field results_ns number
 ---@field virt_ns number
 local Uf = {
     get_selected_item = function() error('Not implemented') end,
@@ -53,9 +52,8 @@ function Uf.new(opt)
     -- lines in the results window)
     o.top = 1
 
-    o.match_ns = api.nvim_create_namespace('ufind/match')
-    o.line_ns = api.nvim_create_namespace('ufind/line')
-    o.virt_ns = api.nvim_create_namespace('ufind/virt')
+    o.results_ns = api.nvim_create_namespace('ufind/line')  -- for all highlights in the results window
+    o.virt_ns = api.nvim_create_namespace('ufind/virt')  -- for the result count
 
     for i = 1, #o.input_bufs do
         o:setup_keymaps(o.input_bufs[i], opt.keymaps)
@@ -252,8 +250,8 @@ end
 function Uf:get_visible_matches()
     local visible_matches = {}
     local vp_height = self:get_vp_height()
-    local to = math.min(self.top + vp_height, #self.matches)
-    for i = self.top, to do
+    local bot = math.min(self.top + vp_height, #self.matches)
+    for i = self.top, bot do
         visible_matches[#visible_matches+1] = self.matches[i]
     end
     return visible_matches
@@ -261,10 +259,9 @@ end
 
 
 function Uf:use_hl_matches()
-    api.nvim_buf_clear_namespace(self.result_buf, self.match_ns, 0, -1)
     for i, match in ipairs(self:get_visible_matches()) do
         for _, pos in ipairs(match.positions) do
-            api.nvim_buf_add_highlight(self.result_buf, self.match_ns, 'UfindMatch', i-1, pos-1, pos)
+            api.nvim_buf_add_highlight(self.result_buf, self.results_ns, 'UfindMatch', i-1, pos-1, pos)
         end
     end
 end

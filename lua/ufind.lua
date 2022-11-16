@@ -94,16 +94,16 @@ local function open(items, config)
         if not config.get_highlights then
             return
         end
-        api.nvim_buf_clear_namespace(uf.result_buf, uf.line_ns, 0, -1)
         for i, match in ipairs(uf:get_visible_matches()) do
             local hls = config.get_highlights(items[match.index], lines[match.index])
             for _, hl in ipairs(hls or {}) do
-                api.nvim_buf_add_highlight(uf.result_buf, uf.line_ns, hl[1], i-1, hl[2], hl[3])
+                api.nvim_buf_add_highlight(uf.result_buf, uf.results_ns, hl[1], i-1, hl[2], hl[3])
             end
         end
     end
 
     function uf:redraw_results()
+        api.nvim_buf_clear_namespace(self.result_buf, self.results_ns, 0, -1)
         api.nvim_buf_set_lines(self.result_buf, 0, -1, true, vim.tbl_map(function(match)
             return lines[match.index]
         end, self:get_visible_matches()))
@@ -182,12 +182,12 @@ local function open_live(getcmd, config)
 
     function uf:redraw_results()
         if config.ansi then
+            api.nvim_buf_clear_namespace(self.result_buf, self.results_ns, 0, -1)
             local lines, hls = require'ufind.ansi'.parse(self:get_visible_matches())
-            api.nvim_buf_clear_namespace(self.result_buf, self.line_ns, 0, -1)
             api.nvim_buf_set_lines(self.result_buf, 0, -1, true, lines)
             -- Note: need to add highlights *after* buf_set_lines
             for _, hl in ipairs(hls) do
-                api.nvim_buf_add_highlight(self.result_buf, self.line_ns, hl.hl_group, hl.line-1, hl.col_start-1, hl.col_end-1)
+                api.nvim_buf_add_highlight(self.result_buf, self.results_ns, hl.hl_group, hl.line-1, hl.col_start-1, hl.col_end-1)
             end
         else
             api.nvim_buf_set_lines(self.result_buf, 0, -1, true, self:get_visible_matches())
