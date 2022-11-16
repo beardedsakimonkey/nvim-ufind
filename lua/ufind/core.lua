@@ -250,7 +250,7 @@ end
 function Uf:get_visible_matches()
     local visible_matches = {}
     local vp_height = self:get_vp_height()
-    local bot = math.min(self.top + vp_height, #self.matches)
+    local bot = math.min(self.top + vp_height - 1, #self.matches)
     for i = self.top, bot do
         visible_matches[#visible_matches+1] = self.matches[i]
     end

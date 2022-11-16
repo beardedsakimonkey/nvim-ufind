@@ -180,7 +180,12 @@ local function open_live(getcmd, config)
         once = true,  -- for some reason, BufUnload fires twice otherwise
     })
 
-    function uf:redraw_results()
+    function uf:redraw_results(is_subs_chunk)
+        -- Perf: if we're redrawing from a subsequent chunk of stdout (ie not the initial chunk) and the viewport
+        -- is already full with lines, avoid redrawing.
+        if is_subs_chunk and api.nvim_buf_line_count(self.result_buf) == self:get_vp_height() then
+            return
+        end
         if config.ansi then
             api.nvim_buf_clear_namespace(self.result_buf, self.results_ns, 0, -1)
             local lines, hls = require'ufind.ansi'.parse(self:get_visible_matches())
@@ -195,13 +200,13 @@ local function open_live(getcmd, config)
     end
 
     -- Note: hot path (called on every chunk of stdout)
-    local render_results = util.schedule_wrap_t(function(results)
+    local render_results = util.schedule_wrap_t(function(results, is_subs_chunk)
         if not api.nvim_buf_is_valid(uf.result_buf) then  -- window has been closed
             return
         end
         local lines = vim.split(table.concat(results), '\n', {trimempty = true})
         uf.matches = lines  -- store matches for when we scroll
-        uf:redraw_results()
+        uf:redraw_results(is_subs_chunk)
         uf:use_virt_text(tostring(#lines))
     end)
 
@@ -234,7 +239,8 @@ local function open_live(getcmd, config)
             assert(not err, err)
             if chunk then
                 stdoutbuf[#stdoutbuf+1] = chunk
-                render_results(stdoutbuf)
+                local is_subs_chunk = #stdoutbuf > 1 -- must redraw on the first chunk
+                render_results(stdoutbuf, is_subs_chunk)
             end
         end)
         stderr:read_start(function(err, chunk)  -- on stderr
