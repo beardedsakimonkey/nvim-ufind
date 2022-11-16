@@ -153,6 +153,8 @@ local open_live_defaults = {
 local function open_live(getcmd, config)
     assert(type(getcmd) == 'function')
     config = vim.tbl_deep_extend('keep', config or {}, open_live_defaults)
+    require'ufind.ansi'.add_hls()
+
     local uf = core.Uf.new({
         on_complete = config.on_complete,
         layout = config.layout,
@@ -180,32 +182,19 @@ local function open_live(getcmd, config)
 
     function uf:redraw_results()
         if config.ansi then
-            local lines_noansi = {}
+            local lines = {}
             local all_hls = {}
             for i, line in ipairs(self:get_visible_matches()) do
-                local hls, line_noansi = require('ufind.ansi').parse(line, i)
-                lines_noansi[#lines_noansi+1] = line_noansi
+                local line_noansi, hls = require('ufind.ansi').parse(line, i)
+                lines[#lines+1] = line_noansi
                 for _, hl in ipairs(hls) do -- flatten
                     all_hls[#all_hls+1] = hl
                 end
             end
             api.nvim_buf_clear_namespace(self.result_buf, self.line_ns, 0, -1)
-            api.nvim_buf_set_lines(self.result_buf, 0, -1, true, lines_noansi)
+            api.nvim_buf_set_lines(self.result_buf, 0, -1, true, lines)
+            -- Note: need to add highlights *after* buf_set_lines
             for _, hl in ipairs(all_hls) do
-                -- TODO: create these eagerly on open?
-                local exists = pcall(api.nvim_get_hl_by_name, hl.hl_group, true)
-                if not exists then
-                    api.nvim_set_hl(0, hl.hl_group, {
-                        fg = hl.fg,
-                        bg = hl.bg,
-                        ctermfg = hl.fg,
-                        ctermbg = hl.bg,
-                        bold = hl.bold,
-                        italic = hl.italic,
-                        underline = hl.underline,
-                        reverse = hl.reverse,
-                    })
-                end
                 api.nvim_buf_add_highlight(self.result_buf, self.line_ns, hl.hl_group, hl.line-1, hl.col_start-1, hl.col_end-1)
             end
         else

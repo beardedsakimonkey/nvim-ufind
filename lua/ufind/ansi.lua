@@ -1,45 +1,31 @@
-local color_name = {
-    [0] = 'Black',
-    [1] = 'DarkRed',
-    [2] = 'DarkGreen',
-    [3] = 'DarkYellow',
-    [4] = 'DarkBlue',
-    [5] = 'DarkMagenta',
-    [6] = 'DarkCyan',
-    [7] = 'White',
-}
+local api = vim.api
+local uv = vim.loop
 
 ---@class UfHighlight
 ---@field line number
 ---@field col_start number
 ---@field col_end number
 ---@field hl_group string
----@field bold? boolean
----@field italic? boolean
----@field underline? boolean
----@field reverse? boolean
----@field fg? {1: number, 2: string}
----@field bg? {1: number, 2: string}
 
 ---@param line string
 ---@param linenr number
----@return UfHighlight[], string
+---@return string, UfHighlight[]
 local function parse(line, linenr)
     local offset = 0
     ---@type UfHighlight[]
     local hls = {}
-    ---@type {1: number, 2: string}?
-    local fg
-    ---@type {1: number, 2: string}?
-    local bg
+    ---@type number[]?
+    local fg_start
+    ---@type number[]?
+    local bg_start
     ---@type number?
-    local bold
+    local bold_start
     ---@type number?
-    local italic
+    local italic_start
     ---@type number?
-    local underline
+    local underline_start
     ---@type number?
-    local reverse
+    local reverse_start
 
     -- NOTE: CSI is typically represented with a 2-byte sequence (0x1b5b). To
     -- save space, it can also be represented with a 1-byte code (0x9b). But,
@@ -50,114 +36,158 @@ local function parse(line, linenr)
         if final == 'm' then  -- final byte indicates an SGR sequence
             pos = pos + offset  -- adjust pos for any previous substitutions
             for param in vim.gsplit(params, ';', true) do
-                local param_num = tonumber(param) or 0
-                if param_num == 1 then  -- bold
-                    bold = pos
-                elseif param_num == 3 then  -- italic
-                    italic = pos
-                elseif param_num == 4 then  -- underline
-                    underline = pos
-                elseif param_num == 7 then  -- reverse
-                    reverse = pos
+                local p = tonumber(param) or 0
+                if p == 1 then  -- bold
+                    bold_start = pos
+                elseif p == 3 then  -- italic
+                    italic_start = pos
+                elseif p == 4 then  -- underline
+                    underline_start = pos
+                elseif p == 7 then  -- reverse
+                    reverse_start = pos
+                end
+                if (p == 0 or p == 22) and bold_start then  -- end bold
+                    hls[#hls+1] = {
+                        line = linenr,
+                        col_start = bold_start,
+                        col_end = pos,
+                        hl_group = 'ufind_bold',
+                    }
+                    bold_start = nil
+                end
+                if (p == 0 or p == 23) and italic_start then  -- end italic
+                    hls[#hls+1] = {
+                        line = linenr,
+                        col_start = italic_start,
+                        col_end = pos,
+                        hl_group = 'ufind_italic',
+                    }
+                    italic_start = nil
+                end
+                if (p == 0 or p == 24) and underline_start then  -- end underline
+                    hls[#hls+1] = {
+                        line = linenr,
+                        col_start = underline_start,
+                        col_end = pos,
+                        hl_group = 'ufind_underline',
+                    }
+                    underline_start = nil
+                end
+                if (p == 0 or p == 27) and reverse_start then  -- end reverse
+                    hls[#hls+1] = {
+                        line = linenr,
+                        col_start = reverse_start,
+                        col_end = pos,
+                        hl_group = 'ufind_reverse',
+                    }
+                    reverse_start = nil
                 end
 
-                if param_num == 0 or param_num == 22 then  -- normal intensity
-                    if bold then
+                -- Note: fg/bg color can also be ended by setting a different fg/bg
+                -- color.
+                if p == 0 or p >= 30 and p <= 37 then  -- end fg color
+                    if fg_start then
                         hls[#hls+1] = {
                             line = linenr,
-                            col_start = bold,
+                            col_start = fg_start[1],
                             col_end = pos,
-                            bold = true,
-                            hl_group = 'ufind_bold',
+                            hl_group = 'ufind_fg' .. fg_start[2],
                         }
+                        fg_start = nil
                     end
-                    bold = nil
-                end
-
-                if param_num == 0 or param_num == 23 then  -- not italic
-                    if italic then
-                        hls[#hls+1] = {
-                            line = linenr,
-                            col_start = italic,
-                            col_end = pos,
-                            italic = true,
-                            hl_group = 'ufind_italic',
-                        }
-                    end
-                    italic = nil
-                end
-
-                if param_num == 0 or param_num == 24 then  -- not underlined
-                    if underline then
-                        hls[#hls+1] = {
-                            line = linenr,
-                            col_start = underline,
-                            col_end = pos,
-                            underline = true,
-                            hl_group = 'ufind_underline',
-                        }
-                    end
-                    underline = nil
-                end
-
-                if param_num == 0 or param_num == 27 then  -- not reversed
-                    if reverse then
-                        hls[#hls+1] = {
-                            line = linenr,
-                            col_start = reverse,
-                            col_end = pos,
-                            reverse = true,
-                            hl_group = 'ufind_reverse',
-                        }
-                    end
-                    reverse = nil
-                end
-
-                if param_num == 0 or
-                    param_num >= 30 and param_num <= 37 then  -- set foreground color
-                    if fg then
-                        hls[#hls+1] = {
-                            line = linenr,
-                            col_start = fg[1],
-                            col_end = pos,
-                            fg = fg[2],
-                            hl_group = 'ufind_fg_' .. fg[2],
-                        }
-                    end
-                    if param_num == 0 then
-                        fg = nil
+                    if p == 0 then
+                        fg_start = nil
                     else
-                        fg = {pos, color_name[param_num-30]}
+                        fg_start = {pos, p - 30}
                     end
                 end
-
-                if param_num == 0 or
-                    param_num >= 40 and param_num <= 47 then  -- set background color
-                    if bg then
+                if p == 0 or p >= 40 and p <= 47 then  -- end bg color
+                    if bg_start then
                         hls[#hls+1] = {
                             line = linenr,
-                            col_start = bg[1],
+                            col_start = bg_start[1],
                             col_end = pos,
-                            bg = bg[2],
-                            hl_group = 'ufind_bg_' .. bg[2],
+                            hl_group = 'ufind_bg' .. bg_start[2],
                         }
+                        bg_start = nil
                     end
-                    if param_num == 0 then
-                        bg = nil
+                    if p == 0 then
+                        bg_start = nil
                     else
-                        bg = {pos, color_name[param_num-40]}
+                        bg_start = {pos, p - 40}
                     end
                 end
-            end
+            end  -- end for loop
         end
         offset = offset - 3 - #params
         return ''
     end)
-    return hls, line_noansi
+    return line_noansi, hls
+end
+
+
+---@diagnostic disable-next-line: unused-local, unused-function
+local function TIME(func)
+    return function (...)
+        local start = uv.hrtime()
+        func(...)
+        local diff_ms = (uv.hrtime() - start) / 1e6
+        return print("Time: ", diff_ms)
+    end
+end
+
+
+---Add ufind_* highlight groups if they don't already exist
+local function add_hls()
+    local color = {
+        [0] = 'Black',
+        [1] = 'DarkRed',
+        [2] = 'DarkGreen',
+        [3] = 'DarkYellow',
+        [4] = 'DarkBlue',
+        [5] = 'DarkMagenta',
+        [6] = 'DarkCyan',
+        [7] = 'White',
+    }
+    for _, s in ipairs{'bold', 'italic', 'underline', 'reverse'} do
+        local name = 'ufind_' .. s
+        local exists = pcall(api.nvim_get_hl_by_name, name, true)
+        if not exists then
+            api.nvim_set_hl(0, name, {
+                bold = s == 'bold',
+                italic = s == 'italic',
+                underline = s == 'underline',
+                reverse = s == 'reverse',
+            })
+        end
+    end
+    for _, s in ipairs{'fg', 'bg'} do
+        for i = 0, 7 do
+            local name = 'ufind_' .. s .. i
+            local exists = pcall(api.nvim_get_hl_by_name, name, true)
+            if not exists then
+                if s == 'fg' then
+                    api.nvim_set_hl(0, name, {
+                        fg = color[i],
+                        ctermfg = color[i],
+                    })
+                else
+                    api.nvim_set_hl(0, name, {
+                        bg = color[i],
+                        ctermbg = color[i],
+                    })
+                end
+            end
+        end
+    end
 end
 
 -- print(parse([[[35mtest:[mYo]]))
 -- print(parse([[[01;31m[Kex[m[K =]]))
 -- print(parse([[[0m[35mufind.lua[0m:[0m[32m25[0m:--   require'ufind'.open({'~/[0m[1m[31mfoo[0m', '~/bar'})]]))
 
-return {parse = parse}
+return {
+    parse = parse,
+    -- add_hls = TIME(add_hls),
+    add_hls = add_hls,
+}
