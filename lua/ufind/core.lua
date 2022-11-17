@@ -36,7 +36,7 @@ function Uf.new(opt)
 
     -- Set prompts
     for i = 1, #o.input_bufs do
-        local prompt = i .. '/' .. num_inputs .. view.PROMPT
+        local prompt = i .. '/' .. num_inputs .. '> '
         vim.fn.prompt_setprompt(o.input_bufs[i], prompt)
         api.nvim_buf_add_highlight(o.input_bufs[i], -1, 'UfindPrompt', 0, 0, #prompt)
     end

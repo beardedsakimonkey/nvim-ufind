@@ -1,7 +1,5 @@
 local api = vim.api
 
-local PROMPT = '> '
-
 ---@param cfg UfLayout
 local function get_win_layouts(cfg)
     local has_border = cfg.border ~= 'none'
@@ -71,7 +69,6 @@ end
 local function create_input_buf()
     local buf = api.nvim_create_buf(false, true)
     vim.bo[buf].buftype = 'prompt'
-    vim.fn.prompt_setprompt(buf, PROMPT)
     return buf
 end
 
@@ -83,7 +80,6 @@ local function create_result_buf()
 end
 
 return {
-    PROMPT = PROMPT,
     create_wins = create_wins,
     handle_vimresized = handle_vimresized,
     create_input_buf = create_input_buf,
