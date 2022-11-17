@@ -236,9 +236,9 @@ function Uf:setup_keymaps(buf, keymaps)
             or k == 'home' or k == 'end' or k == 'wheel_up' or k == 'wheel_down' then
             util.keymap('i', v, function() self:move_cursor_and_redraw(k) end, opts)
         elseif k == 'prev_scope' then
-            util.keymap('i', '<C-p>', function() self:switch_input_buf(false) end, opts)
+            util.keymap('i', v, function() self:switch_input_buf(false) end, opts)
         elseif k == 'next_scope' then
-            util.keymap('i', '<C-n>', function() self:switch_input_buf(true) end, opts)
+            util.keymap('i', v, function() self:switch_input_buf(true) end, opts)
         else
             util.errf('Invalid keymap name %q', k)
         end
