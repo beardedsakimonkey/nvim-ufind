@@ -47,15 +47,16 @@ local function schedule_wrap_t(fn)
     end
 end
 
+
 ---@param ... string
 local function err(...)
     local args = {...}
-    vim.schedule(function ()
-        vim.api.nvim_err_writeln('[ufind] ' .. table.concat(args, ' '))
-    end)
+    vim.api.nvim_err_writeln('[ufind] ' .. table.concat(args, ' '))
 end
 
 
+---@param str string
+---@param ... string
 local function errf(str, ...)
     err(string.format(str, ...))
 end
@@ -76,7 +77,9 @@ local function spawn(cmd, args, onstdout, onexit)
         args = args,
     }, function(exit_code, signal)  -- on exit
         if next(stderrbuf) ~= nil then
-            err(table.concat(stderrbuf))
+            vim.schedule(function()
+                err(table.concat(stderrbuf))
+            end)
         end
         if onexit then
             onexit(exit_code, signal)
@@ -98,6 +101,7 @@ local function spawn(cmd, args, onstdout, onexit)
     end)
     return handle, pid
 end
+
 
 return {
     tbl_some = tbl_some,
