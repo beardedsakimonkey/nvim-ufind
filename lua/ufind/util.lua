@@ -60,6 +60,45 @@ local function errf(str, ...)
     err(string.format(str, ...))
 end
 
+
+---@param cmd string
+---@param args string[]
+---@param onstdout fun(stdoutbuf: string[])
+---@param onexit fun(exit: number, signal: number)?
+---@return userdata,number # handle, pid
+local function spawn(cmd, args, onstdout, onexit)
+    local uv = vim.loop
+    local stdout, stderr = uv.new_pipe(), uv.new_pipe()
+    local stdoutbuf, stderrbuf = {}, {}
+    local handle, pid
+    handle, pid = uv.spawn(cmd, {
+        stdio = {nil, stdout, stderr},
+        args = args,
+    }, function(exit_code, signal)  -- on exit
+        if next(stderrbuf) ~= nil then
+            err(table.concat(stderrbuf))
+        end
+        if onexit then
+            onexit(exit_code, signal)
+        end
+        handle:close()
+    end)
+    stdout:read_start(function(e, chunk)  -- on stdout
+        assert(not e, e)
+        if chunk then
+            stdoutbuf[#stdoutbuf+1] = chunk
+            onstdout(stdoutbuf)
+        end
+    end)
+    stderr:read_start(function(e, chunk)  -- on stderr
+        assert(not e, e)
+        if chunk then
+            stderrbuf[#stderrbuf+1] = chunk
+        end
+    end)
+    return handle, pid
+end
+
 return {
     tbl_some = tbl_some,
     keymap = keymap,
@@ -67,4 +106,5 @@ return {
     schedule_wrap_t = schedule_wrap_t,
     err = err,
     errf = errf,
+    spawn = spawn,
 }

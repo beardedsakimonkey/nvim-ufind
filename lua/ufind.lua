@@ -216,39 +216,19 @@ local function open_live(getcmd, config)
             prev_handle:kill(uv.constants.SIGTERM)
             -- Don't close the handle; that'll happen in on_exit
         end
-        local stdout, stderr = uv.new_pipe(), uv.new_pipe()
-        local stdoutbuf, stderrbuf = {}, {}
         local query = uf.get_query(uf.input_bufs[1])
         local cmd, args = getcmd(query)
-
-        local handle
-        handle = uv.spawn(cmd, {
-            stdio = {nil, stdout, stderr},
-            args = args,
-        }, function(exit_code, signal)  -- on exit
-            if next(stderrbuf) ~= nil then
-                util.err(table.concat(stderrbuf))
-            end
-            if exit_code ~= 0 and signal ~= uv.constants.SIGTERM then
+        local function onstdout(stdoutbuf)
+            local is_subs_chunk = #stdoutbuf > 1 -- must redraw on the first chunk
+            render_results(stdoutbuf, is_subs_chunk)
+        end
+        local function onexit(exit, signal)
+            if exit ~= 0 and signal ~= uv.constants.SIGTERM then
                 render_results({})
             end
-            handle:close()
-        end)
+        end
+        local handle = util.spawn(cmd, args, onstdout, onexit)
         prev_handle = handle
-        stdout:read_start(function(err, chunk)  -- on stdout
-            assert(not err, err)
-            if chunk then
-                stdoutbuf[#stdoutbuf+1] = chunk
-                local is_subs_chunk = #stdoutbuf > 1 -- must redraw on the first chunk
-                render_results(stdoutbuf, is_subs_chunk)
-            end
-        end)
-        stderr:read_start(function(err, chunk)  -- on stderr
-            assert(not err, err)
-            if chunk then
-                stderrbuf[#stderrbuf+1] = chunk
-            end
-        end)
     end
 
     api.nvim_buf_attach(uf.input_bufs[1], false, {on_lines = on_lines})
