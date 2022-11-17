@@ -152,6 +152,19 @@ function Uf:move_cursor(offset)
 end
 
 
+---@return number?
+local function get_mousescroll()
+    local mousescroll
+    local opt = vim.opt.mousescroll:get()
+    if opt[1] and vim.startswith(opt[1], 'ver:') then
+        mousescroll = tonumber(opt[1]:sub(5))
+    elseif opt[2] and vim.startswith(opt[2], 'ver:') then
+        mousescroll = tonumber(opt[2]:sub(5))
+    end
+    return mousescroll
+end
+
+
 ---@param m 'up'|'down'|'page_up'|'page_down'|'home'|'end'|'wheel_up'|'wheel_down' Cursor motion
 function Uf:move_cursor_and_redraw(m)
     local need_redraw
@@ -163,20 +176,10 @@ function Uf:move_cursor_and_redraw(m)
     elseif m == 'home' or m == 'end' then
         need_redraw = self:move_cursor(m == 'home' and -math.huge or math.huge)
     elseif m == 'wheel_up' or m == 'wheel_down' then
-        local step
-        if self.mousescroll then
-            step = self.mousescroll
-        else
-            local opt = vim.opt.mousescroll:get()
-            if opt[1] and vim.startswith(opt[1], 'ver:') then
-                step = tonumber(opt[1]:sub(5))
-            elseif opt[2] and vim.startswith(opt[2], 'ver:') then
-                step = tonumber(opt[2]:sub(5))
-            end
-            step = step or 3
-            self.mousescroll = step  -- cache it
+        if not self.mousescroll then
+            self.mousescroll = get_mousescroll() or 3
         end
-        need_redraw = self:move_cursor(m == 'wheel_up' and -step or step)
+        need_redraw = self:move_cursor(m == 'wheel_up' and -self.mousescroll or self.mousescroll)
     end
     if need_redraw then
         self:redraw_results()
