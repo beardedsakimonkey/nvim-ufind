@@ -28,7 +28,6 @@ function Uf.new(opt)
     local num_inputs = opt.num_inputs or 1
     o.cur_input = 1
     o.input_bufs = {}
-    o.matches = {}
 
     -- Create input buffers
     for _ = 1, num_inputs do
@@ -42,15 +41,15 @@ function Uf.new(opt)
         api.nvim_buf_add_highlight(o.input_bufs[i], -1, 'UfindPrompt', 0, 0, #prompt)
     end
 
+    -- Needed for occlusion of results
+    o.matches = {}  -- stores current matches for when we scroll
+    o.top = 1  -- line number of the line at the top of the viewport
+
     o.on_complete = opt.on_complete
     o.orig_win = api.nvim_get_current_win()
     o.result_buf = view.create_result_buf()
     o.input_win, o.result_win = view.create_wins(o.input_bufs[1], o.result_buf, opt.layout)
     o.vimresized_auid = view.handle_vimresized(o.input_win, o.result_win, opt.layout)
-
-    -- Line number of the line at the top of the viewport (used for occluding
-    -- lines in the results window)
-    o.top = 1
 
     o.results_ns = api.nvim_create_namespace('ufind/line')  -- for all highlights in the results window
     o.virt_ns = api.nvim_create_namespace('ufind/virt')  -- for the result count

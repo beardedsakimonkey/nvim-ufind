@@ -53,7 +53,7 @@ local open_defaults = {
 
 local function inject_empty_captures(pat)
     local n = 0  -- number of captures found
-    local sub = string.gsub(pat, '%%?%b()', function(match)
+    local sub = pat:gsub('%%?%b()', function(match)
         -- TODO: we shouldn't inject for [(]%)
         if vim.endswith(match, '()') or  -- (), %b()
             vim.startswith(match, '%(') then  -- %(
