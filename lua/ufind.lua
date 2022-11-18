@@ -1,5 +1,6 @@
 local core = require('ufind.core')
 local util = require('ufind.util')
+local ansi = require('ufind.ansi')
 
 local api = vim.api
 local uv = vim.loop
@@ -67,7 +68,7 @@ local function inject_empty_captures(pat)
 end
 
 
----@param items any A sequential table of any type.
+---@param items any[] A sequential table of any type.
 ---@param config? UfOpenConfig
 local function open(items, config)
     assert(type(items) == 'table')
@@ -119,15 +120,14 @@ local function open(items, config)
         uf.matches = matches  -- store matches for when we scroll
         uf:move_cursor(-math.huge)  -- move cursor to top
         uf:redraw_results()  -- always redraw
-
-        uf:use_virt_text(#matches .. ' / ' .. #items)
+        uf:use_virt_text(#matches .. ' / ' .. #lines)
     end
 
     for _, buf in ipairs(uf.input_bufs) do
         -- `on_lines` can be called in various contexts wherein textlock could prevent
         -- changing buffer contents and window layout. Use `schedule` to defer such
         -- operations to the main loop.
-        -- NOTE: `on_lines` gets called immediately because of setting the prompt
+        -- Note: `on_lines` gets called immediately because of setting the prompt
         api.nvim_buf_attach(buf, false, {on_lines = vim.schedule_wrap(on_lines)})
     end
 
@@ -153,7 +153,7 @@ local open_live_defaults = {
 local function open_live(getcmd, config)
     assert(type(getcmd) == 'function')
     config = vim.tbl_deep_extend('keep', config or {}, open_live_defaults)
-    require'ufind.ansi'.add_hls()
+    ansi.add_highlights()
 
     local uf = core.Uf.new({
         on_complete = config.on_complete,
@@ -185,7 +185,7 @@ local function open_live(getcmd, config)
     function uf:redraw_results()
         if config.ansi then
             api.nvim_buf_clear_namespace(self.result_buf, self.results_ns, 0, -1)
-            local lines, hls = require'ufind.ansi'.parse(self:get_visible_matches())
+            local lines, hls = ansi.parse(self:get_visible_matches())
             api.nvim_buf_set_lines(self.result_buf, 0, -1, true, lines)
             -- Note: need to add highlights *after* buf_set_lines
             for _, hl in ipairs(hls) do

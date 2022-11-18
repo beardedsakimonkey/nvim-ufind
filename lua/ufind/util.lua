@@ -50,15 +50,14 @@ end
 
 ---@param ... string
 local function err(...)
-    local args = {...}
-    vim.api.nvim_err_writeln('[ufind] ' .. table.concat(args, ' '))
+    vim.api.nvim_err_writeln('[ufind] ' .. table.concat({...}, ' '))
 end
 
 
----@param str string
+---@param msg string
 ---@param ... string
-local function errf(str, ...)
-    err(string.format(str, ...))
+local function errf(msg, ...)
+    err(string.format(msg, ...))
 end
 
 

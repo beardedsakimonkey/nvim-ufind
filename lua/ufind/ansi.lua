@@ -1,5 +1,4 @@
 local api = vim.api
-local uv = vim.loop
 
 ---@class UfHighlight
 ---@field line number
@@ -29,7 +28,7 @@ local function parse(lines)
         ---@type number?
         local reverse_start
 
-        -- NOTE: CSI is typically represented with a 2-byte sequence (0x1b5b). To
+        -- Note: CSI is typically represented with a 2-byte sequence (0x1b5b). To
         -- save space, it can also be represented with a 1-byte code (0x9b). But,
         -- since this can conflict with codepoints in other modern encodings, the
         -- 2-byte representation is typically used. So, we only scan for that one.
@@ -130,19 +129,14 @@ local function parse(lines)
 end
 
 
----@diagnostic disable-next-line: unused-local, unused-function
-local function TIME(func)
-    return function (...)
-        local start = uv.hrtime()
-        func(...)
-        local diff_ms = (uv.hrtime() - start) / 1e6
-        return print("Time: ", diff_ms)
-    end
+local function hl_exists(name)
+    -- Note: wrapped in parens to return only the first value
+    return (pcall(api.nvim_get_hl_by_name, name, true))
 end
 
 
 ---Add ufind_* highlight groups if they don't already exist
-local function add_hls()
+local function add_highlights()
     local color = {
         [0] = 'Black',
         [1] = 'DarkRed',
@@ -155,8 +149,7 @@ local function add_hls()
     }
     for _, s in ipairs{'bold', 'italic', 'underline', 'reverse'} do
         local name = 'ufind_' .. s
-        local exists = pcall(api.nvim_get_hl_by_name, name, true)
-        if not exists then
+        if not hl_exists(name) then
             api.nvim_set_hl(0, name, {
                 bold = s == 'bold',
                 italic = s == 'italic',
@@ -168,8 +161,7 @@ local function add_hls()
     for _, s in ipairs{'fg', 'bg'} do
         for i = 0, 7 do
             local name = 'ufind_' .. s .. i
-            local exists = pcall(api.nvim_get_hl_by_name, name, true)
-            if not exists then
+            if not hl_exists(name) then
                 if s == 'fg' then
                     api.nvim_set_hl(0, name, {
                         fg = color[i],
@@ -192,6 +184,5 @@ end
 
 return {
     parse = parse,
-    -- add_hls = TIME(add_hls),
-    add_hls = add_hls,
+    add_highlights = add_highlights,
 }

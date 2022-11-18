@@ -125,18 +125,19 @@ local function parse_query(query_part)
     if query_part:sub(ts, ts) == "'" then
         ts = ts + 1
         exact = true
-    end
-    if not exact and query_part:sub(ts, ts) == '!' then
-        ts = ts + 1
-        invert = true
-    end
-    if not exact and query_part:sub(ts, ts) == '^' then
-        ts = ts + 1
-        prefix = true
-    end
-    if not exact and query_part:sub(te) == '$' then
-        te = te - 1
-        suffix = true
+    else
+        if query_part:sub(ts, ts) == '!' then
+            ts = ts + 1
+            invert = true
+        end
+        if query_part:sub(ts, ts) == '^' then
+            ts = ts + 1
+            prefix = true
+        end
+        if query_part:sub(te) == '$' then
+            te = te - 1
+            suffix = true
+        end
     end
     local term = query_part:sub(ts, te)
     return term and

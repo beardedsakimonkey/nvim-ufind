@@ -58,7 +58,7 @@ local function handle_vimresized(input_win, result_win, cfg)
     local function relayout()
         local input_win_layout, result_win_layout = get_win_layouts(cfg)
         api.nvim_win_set_config(input_win, input_win_layout)
-        -- NOTE: This disables 'cursorline' due to style = 'minimal' window cfg
+        -- Note: This disables 'cursorline' due to style = 'minimal' window config
         api.nvim_win_set_config(result_win, result_win_layout)
         vim.wo[result_win].cursorline = true
     end
