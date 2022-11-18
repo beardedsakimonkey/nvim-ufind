@@ -167,15 +167,17 @@ local function open_live(getcmd, config)
         return lines[1]
     end
 
-    local prev_handle
+    local handle
 
-    local function on_unload()
-        if prev_handle and prev_handle:is_active() then
-            prev_handle:kill(uv.constants.SIGTERM)
+    local function kill_prev()
+        if handle and handle:is_active() then
+            handle:kill(uv.constants.SIGTERM)
+            -- Don't close the handle; that'll happen in on_exit
         end
     end
+
     api.nvim_create_autocmd('BufUnload', {
-        callback = on_unload,
+        callback = kill_prev,
         buffer = uf.input_buf,
         once = true,  -- for some reason, BufUnload fires twice otherwise
     })
@@ -212,10 +214,7 @@ local function open_live(getcmd, config)
 
     local function on_lines()
         uf:move_cursor(-math.huge)  -- move cursor to top
-        if prev_handle and prev_handle:is_active() then
-            prev_handle:kill(uv.constants.SIGTERM)
-            -- Don't close the handle; that'll happen in on_exit
-        end
+        kill_prev()  -- kill previous job if active
         local query = uf.get_query(uf.input_bufs[1])
         local cmd, args = getcmd(query)
         local function onstdout(stdoutbuf)
@@ -227,8 +226,7 @@ local function open_live(getcmd, config)
                 render_results({})
             end
         end
-        local handle = util.spawn(cmd, args, onstdout, onexit)
-        prev_handle = handle
+        handle = util.spawn(cmd, args, onstdout, onexit)
     end
 
     api.nvim_buf_attach(uf.input_bufs[1], false, {on_lines = on_lines})

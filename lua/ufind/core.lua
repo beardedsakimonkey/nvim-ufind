@@ -154,14 +154,14 @@ end
 
 ---@return number?
 local function get_mousescroll()
-    local mousescroll
     local opt = vim.opt.mousescroll:get()
     if opt[1] and vim.startswith(opt[1], 'ver:') then
-        mousescroll = tonumber(opt[1]:sub(5))
-    elseif opt[2] and vim.startswith(opt[2], 'ver:') then
-        mousescroll = tonumber(opt[2]:sub(5))
+        return tonumber(opt[1]:sub(5))
     end
-    return mousescroll
+    if opt[2] and vim.startswith(opt[2], 'ver:') then
+        return tonumber(opt[2]:sub(5))
+    end
+    return nil
 end
 
 
