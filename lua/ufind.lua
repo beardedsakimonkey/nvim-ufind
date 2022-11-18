@@ -182,12 +182,7 @@ local function open_live(getcmd, config)
         once = true,  -- for some reason, BufUnload fires twice otherwise
     })
 
-    function uf:redraw_results(is_subs_chunk)
-        -- Perf: if we're redrawing from a subsequent chunk of stdout (ie not the initial chunk) and the viewport
-        -- is already full with lines, avoid redrawing.
-        if is_subs_chunk and api.nvim_buf_line_count(self.result_buf) == self:get_vp_height() then
-            return
-        end
+    function uf:redraw_results()
         if config.ansi then
             api.nvim_buf_clear_namespace(self.result_buf, self.results_ns, 0, -1)
             local lines, hls = require'ufind.ansi'.parse(self:get_visible_matches())
@@ -202,13 +197,17 @@ local function open_live(getcmd, config)
     end
 
     -- Note: hot path (called on every chunk of stdout)
-    local render_results = util.schedule_wrap_t(function(results, is_subs_chunk)
+    local render_results = util.schedule_wrap_t(function(stdoutbuf)
         if not api.nvim_buf_is_valid(uf.result_buf) then  -- window has been closed
             return
         end
-        local lines = vim.split(table.concat(results), '\n', {trimempty = true})
+        local lines = vim.split(table.concat(stdoutbuf), '\n', {trimempty = true})
         uf.matches = lines  -- store matches for when we scroll
-        uf:redraw_results(is_subs_chunk)
+        -- Perf: if we're redrawing from a subsequent chunk of stdout (ie not the initial chunk) and the viewport
+        -- is already full with lines, avoid redrawing.
+        if not (#stdoutbuf > 1 and api.nvim_buf_line_count(uf.result_buf) == uf:get_vp_height()) then
+            uf:redraw_results()
+        end
         uf:use_virt_text(tostring(#lines))
     end)
 
@@ -218,8 +217,7 @@ local function open_live(getcmd, config)
         local query = uf.get_query(uf.input_bufs[1])
         local cmd, args = getcmd(query)
         local function onstdout(stdoutbuf)
-            local is_subs_chunk = #stdoutbuf > 1 -- must redraw on the first chunk
-            render_results(stdoutbuf, is_subs_chunk)
+            render_results(stdoutbuf)
         end
         local function onexit(exit, signal)
             if exit ~= 0 and signal ~= uv.constants.SIGTERM then
