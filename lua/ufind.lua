@@ -216,15 +216,11 @@ local function open_live(getcmd, config)
         kill_prev()  -- kill previous job if active
         local query = uf.get_query(uf.input_bufs[1])
         local cmd, args = getcmd(query)
+        render_results({}) -- clear results in case of no stdout
         local function onstdout(stdoutbuf)
             render_results(stdoutbuf)
         end
-        local function onexit(exit, signal)
-            if exit ~= 0 and signal ~= uv.constants.SIGTERM then
-                render_results({})
-            end
-        end
-        handle = util.spawn(cmd, args, onstdout, onexit)
+        handle = util.spawn(cmd, args, onstdout)
     end
 
     api.nvim_buf_attach(uf.input_bufs[1], false, {on_lines = on_lines})
