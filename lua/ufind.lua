@@ -6,7 +6,7 @@ local api = vim.api
 local uv = vim.loop
 
 ---@alias UfGetValue fun(item: any): string
----@alias UfGetHighlights fun(item: any, line: string): {1: string, 2: number, 3: number}?
+---@alias UfGetHighlights fun(item: any, line: string): any[]?
 ---@alias UfOnComplete fun(cmd: 'edit'|'split'|'vsplit'|'tabedit', item: any)
 
 ---@class UfKeymaps
@@ -189,7 +189,8 @@ local function open_live(getcmd, config)
             api.nvim_buf_set_lines(self.result_buf, 0, -1, true, lines)
             -- Note: need to add highlights *after* buf_set_lines
             for _, hl in ipairs(hls) do
-                api.nvim_buf_add_highlight(self.result_buf, self.results_ns, hl.hl_group, hl.line-1, hl.col_start-1, hl.col_end-1)
+                api.nvim_buf_add_highlight(self.result_buf, self.results_ns, hl.hl_group,
+                    hl.line-1, hl.col_start-1, hl.col_end-1)
             end
         else
             api.nvim_buf_set_lines(self.result_buf, 0, -1, true, self:get_visible_matches())
@@ -203,8 +204,8 @@ local function open_live(getcmd, config)
         end
         local lines = vim.split(table.concat(stdoutbuf), '\n', {trimempty = true})
         uf.matches = lines  -- store matches for when we scroll
-        -- Perf: if we're redrawing from a subsequent chunk of stdout (ie not the initial chunk) and the viewport
-        -- is already full with lines, avoid redrawing.
+        -- Perf: if we're redrawing from a subsequent chunk of stdout (ie not the initial chunk) and
+        -- the viewport is already full with lines, avoid redrawing.
         if not (#stdoutbuf > 1 and api.nvim_buf_line_count(uf.result_buf) == uf:get_vp_height()) then
             uf:redraw_results()
         end
@@ -217,10 +218,10 @@ local function open_live(getcmd, config)
         local query = uf.get_query(uf.input_bufs[1])
         local cmd, args = getcmd(query)
         render_results({}) -- clear results in case of no stdout
-        local function onstdout(stdoutbuf)
+        local function on_stdout(stdoutbuf)
             render_results(stdoutbuf)
         end
-        handle = util.spawn(cmd, args, onstdout)
+        handle = util.spawn(cmd, args, on_stdout)
     end
 
     api.nvim_buf_attach(uf.input_bufs[1], false, {on_lines = on_lines})

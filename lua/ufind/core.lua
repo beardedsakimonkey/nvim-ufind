@@ -51,7 +51,7 @@ function Uf.new(opt)
     o.input_win, o.result_win = view.create_wins(o.input_bufs[1], o.result_buf, opt.layout)
     o.vimresized_auid = view.handle_vimresized(o.input_win, o.result_win, opt.layout)
 
-    o.results_ns = api.nvim_create_namespace('ufind/line')  -- for all highlights in the results window
+    o.results_ns = api.nvim_create_namespace('ufind/results')  -- for all highlights in the results window
     o.virt_ns = api.nvim_create_namespace('ufind/virt')  -- for the result count
 
     for i = 1, #o.input_bufs do

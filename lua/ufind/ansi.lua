@@ -86,8 +86,8 @@ local function parse(lines)
 
                     -- Note: fg/bg color can also be ended by setting a different fg/bg
                     -- color.
-                    if p == 0 or p >= 30 and p <= 37 then  -- end fg color
-                        if fg_start then
+                    if p == 0 or p >= 30 and p <= 37 then
+                        if fg_start then  -- end fg color
                             hls[#hls+1] = {
                                 line = linenr,
                                 col_start = fg_start[1],
@@ -96,14 +96,12 @@ local function parse(lines)
                             }
                             fg_start = nil
                         end
-                        if p == 0 then
-                            fg_start = nil
-                        else
+                        if p ~= 0 then  -- start fg color
                             fg_start = {pos, p - 30}
                         end
                     end
-                    if p == 0 or p >= 40 and p <= 47 then  -- end bg color
-                        if bg_start then
+                    if p == 0 or p >= 40 and p <= 47 then
+                        if bg_start then  -- end bg color
                             hls[#hls+1] = {
                                 line = linenr,
                                 col_start = bg_start[1],
@@ -112,13 +110,11 @@ local function parse(lines)
                             }
                             bg_start = nil
                         end
-                        if p == 0 then
-                            bg_start = nil
-                        else
+                        if p ~= 0 then  -- start bg color
                             bg_start = {pos, p - 40}
                         end
                     end
-                end  -- end for loop
+                end
             end
             offset = offset - 3 - #params
             return ''
@@ -130,13 +126,15 @@ end
 
 
 local function hl_exists(name)
-    -- Note: wrapped in parens to return only the first value
-    return (pcall(api.nvim_get_hl_by_name, name, true))
+    local ok = pcall(api.nvim_get_hl_by_name, name, true)
+    return ok
 end
 
 
 ---Add ufind_* highlight groups if they don't already exist
 local function add_highlights()
+    -- Note: when termguicolors is set, it seems we can't use the terminal's preset 16 colors, so we
+    -- use these color shorthands as an approximation.
     local color = {
         [0] = 'Black',
         [1] = 'DarkRed',
@@ -165,12 +163,12 @@ local function add_highlights()
                 if s == 'fg' then
                     api.nvim_set_hl(0, name, {
                         fg = color[i],
-                        ctermfg = color[i],
+                        ctermfg = i,
                     })
                 else
                     api.nvim_set_hl(0, name, {
                         bg = color[i],
-                        ctermbg = color[i],
+                        ctermbg = i,
                     })
                 end
             end
