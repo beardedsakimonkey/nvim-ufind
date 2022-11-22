@@ -17,7 +17,7 @@ Features
 
 TODO
 ----
-  - [ ] `open` should take a command spec so the window opens immediately
+  - [x] `open` should take a command spec so the window opens immediately
   - [ ] multiselect
   - [x] configurable layout
   - [x] configurable mappings

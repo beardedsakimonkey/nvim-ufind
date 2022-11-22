@@ -6,7 +6,7 @@ local api = vim.api
 local uv = vim.loop
 
 ---@alias UfGetValue fun(item: any): string
----@alias UfGetHighlights fun(item: any, line: string): any[]?
+---@alias UfGetHighlights fun(line: string): any[]?
 ---@alias UfOnComplete fun(cmd: 'edit'|'split'|'vsplit'|'tabedit', item: any)
 
 ---@class UfKeymaps
@@ -68,10 +68,9 @@ local function inject_empty_captures(pat)
 end
 
 
----@param items any[] A sequential table of any type.
+---@param items_or_getcmd any[]|fun():string,string[]?
 ---@param config? UfOpenConfig
-local function open(items, config)
-    assert(type(items) == 'table')
+local function open(items_or_getcmd, config)
     config = vim.tbl_deep_extend('keep', config or {}, open_defaults)
     local pattern, num_captures = inject_empty_captures(config.pattern)
     local uf = core.Uf.new({
@@ -81,22 +80,34 @@ local function open(items, config)
         keymaps = config.keymaps,
     })
 
+    local lines
+    if type(items_or_getcmd) == 'table' then
+        lines = vim.tbl_map(function(item)
+            return config.get_value(item) -- TODO: warn on nil?
+        end, items_or_getcmd)
+    elseif type(items_or_getcmd) == 'function' then
+        lines = {}
+    else
+        util.errf('Invalid argument type %q', items_or_getcmd)
+    end
+
     function uf:get_selected_item()
         local cursor = self:get_cursor()
         local matches = self:get_visible_matches()
-        return items[matches[cursor].index]
+        if type(items_or_getcmd) == 'table' then
+            return items_or_getcmd[matches[cursor].index]
+        else
+            return lines[matches[cursor].index]
+        end
     end
-
-    local lines = vim.tbl_map(function(item)
-        return config.get_value(item) -- TODO: warn on nil?
-    end, items)
 
     local function use_hl_lines()
         if not config.get_highlights then
             return
         end
         for i, match in ipairs(uf:get_visible_matches()) do
-            local hls = config.get_highlights(items[match.index], lines[match.index])
+            -- TODO: pass in the item if any
+            local hls = config.get_highlights(lines[match.index])
             for _, hl in ipairs(hls or {}) do
                 api.nvim_buf_add_highlight(uf.result_buf, uf.results_ns, hl[1], i-1, hl[2], hl[3])
             end
@@ -112,23 +123,36 @@ local function open(items, config)
         self:use_hl_matches()
     end
 
-    local function on_lines()
+    -- `on_lines` can be called in various contexts wherein textlock could prevent changing buffer
+    -- contents and window layout. Use `schedule` to defer such operations to the main loop.
+    local on_lines = vim.schedule_wrap(function(is_subs_chunk)
         if not api.nvim_buf_is_valid(uf.result_buf) then  -- window has been closed
             return
         end
         local matches = require('ufind.fuzzy_filter').filter(uf:get_queries(), lines, pattern)
         uf.matches = matches  -- store matches for when we scroll
         uf:move_cursor(-math.huge)  -- move cursor to top
-        uf:redraw_results()  -- always redraw
         uf:use_virt_text(#matches .. ' / ' .. #lines)
+        -- Perf: if we're redrawing from a subsequent chunk of stdout (ie not the initial chunk) and
+        -- the viewport is already full with lines, avoid redrawing.
+        if not (is_subs_chunk and api.nvim_buf_line_count(uf.result_buf) == uf:get_vp_height()) then
+            uf:redraw_results()
+        end
+    end)
+
+    if type(items_or_getcmd) == 'function' then
+        local function on_stdout(stdoutbuf)
+            lines = vim.split(table.concat(stdoutbuf), '\n', {trimempty = true})
+            local is_subs_chunk = #stdoutbuf > 1
+            on_lines(is_subs_chunk)
+        end
+        local cmd, args = items_or_getcmd()
+        util.spawn(cmd, args or {}, on_stdout)
     end
 
     for _, buf in ipairs(uf.input_bufs) do
-        -- `on_lines` can be called in various contexts wherein textlock could prevent
-        -- changing buffer contents and window layout. Use `schedule` to defer such
-        -- operations to the main loop.
         -- Note: `on_lines` gets called immediately because of setting the prompt
-        api.nvim_buf_attach(buf, false, {on_lines = vim.schedule_wrap(on_lines)})
+        api.nvim_buf_attach(buf, false, {on_lines = function() on_lines(false) end})
     end
 
     vim.cmd('startinsert')
@@ -148,7 +172,7 @@ local open_live_defaults = {
 }
 
 
----@param getcmd fun(query: string): string,string[]
+---@param getcmd fun(query: string): string,string[]?
 ---@param config? UfOpenLiveConfig
 local function open_live(getcmd, config)
     assert(type(getcmd) == 'function')
@@ -221,7 +245,7 @@ local function open_live(getcmd, config)
         local function on_stdout(stdoutbuf)
             render_results(stdoutbuf)
         end
-        handle = util.spawn(cmd, args, on_stdout)
+        handle = util.spawn(cmd, args or {}, on_stdout)
     end
 
     api.nvim_buf_attach(uf.input_bufs[1], false, {on_lines = on_lines})
