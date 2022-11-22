@@ -35,6 +35,7 @@ local function split_cmd_aux(cmd)
                 ret[#ret+1] = cmd:sub(sq, i-1)
                 sq = nil
                 q = nil
+                si = nil
             end
         else
             if c == ' ' then
@@ -42,15 +43,15 @@ local function split_cmd_aux(cmd)
                     ret[#ret+1] = cmd:sub(si, i-1)
                     si = nil
                 end
-            else  -- non-whitespace
-                if i == #cmd then
-                    ret[#ret+1] = cmd:sub(si, i)
-                elseif si == nil then
+            elseif c == '"' or c == "'" then
+                q = c
+                sq = i+1
+            else  -- non-whitespace/quote
+                if si == nil then
                     si = i
                 end
-                if c == '"' or c == "'" then
-                    q = c
-                    sq = i+1
+                if i == #cmd then
+                    ret[#ret+1] = cmd:sub(si, i)
                 end
             end
         end
