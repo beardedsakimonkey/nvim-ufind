@@ -94,10 +94,14 @@ local function open(items_or_getcmd, config)
     function uf:get_selected_item()
         local cursor = self:get_cursor()
         local matches = self:get_visible_matches()
-        if type(items_or_getcmd) == 'table' then
-            return items_or_getcmd[matches[cursor].index]
-        else
-            return lines[matches[cursor].index]
+        local match = matches[cursor]
+        -- Ensure user didn't hit enter on a query with no results
+        if match ~= nil then
+            if type(items_or_getcmd) == 'table' then
+                return items_or_getcmd[match.index]
+            else
+                return lines[match.index]
+            end
         end
     end
 
@@ -187,7 +191,11 @@ local function open_live(getcmd, config)
 
     function uf:get_selected_item()
         local cursor = self:get_cursor()
+        -- Grab line off the buffer because `matches` contains escape codes
         local lines = api.nvim_buf_get_lines(self.result_buf, cursor-1, cursor, false)
+        if lines[1] == '' then  -- user hit enter on a query with no results
+            return nil
+        end
         return lines[1]
     end
 

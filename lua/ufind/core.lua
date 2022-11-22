@@ -202,8 +202,10 @@ end
 
 function Uf:open_result(cmd)
     local item = self:get_selected_item()
-    self:quit()  -- cleanup first in case `on_complete` opens another finder
-    self.on_complete(cmd, item)
+    if item ~= nil then
+        self:quit()  -- cleanup first in case `on_complete` opens another finder
+        self.on_complete(cmd, item)
+    end
 end
 
 
