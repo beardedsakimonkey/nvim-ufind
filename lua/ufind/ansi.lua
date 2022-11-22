@@ -125,6 +125,14 @@ local function parse(lines)
 end
 
 
+---Strip ansi escape codes from each line
+local function strip(lines)
+    return vim.tbl_map(function(line)
+        return line:gsub('\27%[[0-9;]-[\64-\126]', '')
+    end, lines)
+end
+
+
 local function hl_exists(name)
     local ok = pcall(api.nvim_get_hl_by_name, name, true)
     return ok
@@ -182,5 +190,6 @@ end
 
 return {
     parse = parse,
+    strip = strip,
     add_highlights = add_highlights,
 }

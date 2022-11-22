@@ -23,7 +23,7 @@ TODO
   - [x] configurable mappings
   - [x] expose more highlight groups
   - [x] lua type annotations
-  - [ ] ansi parsing for `open`?
+  - [x] ansi parsing for `open`?
   - [x] implement exact match query syntax
   - [ ] implement OR query syntax?
   - [ ] documentation

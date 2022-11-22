@@ -47,6 +47,7 @@ local open_defaults = {
     ---@type UfOnComplete
     on_complete = function(cmd, item) vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(item)) end,
     pattern = '^(.*)$',
+    ansi = false,
     ---@type UfLayout
     layout = default_layout,
     keymaps = default_keymaps,
@@ -61,6 +62,9 @@ local function open(items_or_getcmd, config)
         config = {config, 'table', true},
     })
     config = vim.tbl_deep_extend('keep', config or {}, open_defaults)
+    if config.ansi then
+        ansi.add_highlights()
+    end
     local pattern, num_captures = arg.inject_empty_captures(config.pattern)
     local uf = core.Uf.new({
         on_complete = config.on_complete,
@@ -108,10 +112,22 @@ local function open(items_or_getcmd, config)
 
     function uf:redraw_results()
         api.nvim_buf_clear_namespace(self.result_buf, self.results_ns, 0, -1)
-        api.nvim_buf_set_lines(self.result_buf, 0, -1, true, vim.tbl_map(function(match)
+        ---@diagnostic disable-next-line: redefined-local
+        local lines = vim.tbl_map(function(match)
             return lines[match.index]
-        end, self:get_visible_matches()))
-        use_hl_lines()
+        end, self:get_visible_matches())
+        if config.ansi then
+            local lines_noansi, hls = ansi.parse(lines)
+            api.nvim_buf_set_lines(self.result_buf, 0, -1, true, lines_noansi)
+            -- Note: need to add highlights *after* buf_set_lines
+            for _, hl in ipairs(hls) do
+                api.nvim_buf_add_highlight(self.result_buf, self.results_ns, hl.hl_group,
+                    hl.line-1, hl.col_start-1, hl.col_end-1)
+            end
+        else
+            api.nvim_buf_set_lines(self.result_buf, 0, -1, true, lines)
+            use_hl_lines()
+        end
         self:use_hl_matches()
     end
 
@@ -121,7 +137,8 @@ local function open(items_or_getcmd, config)
         if not api.nvim_buf_is_valid(uf.result_buf) then  -- window has been closed
             return
         end
-        local matches = require('ufind.fuzzy_filter').filter(uf:get_queries(), lines, pattern)
+        local lines_noansi = config.ansi and ansi.strip(lines) or lines  -- strip ansi for filtering
+        local matches = require('ufind.fuzzy_filter').filter(uf:get_queries(), lines_noansi, pattern)
         uf.matches = matches  -- store matches for when we scroll
         uf:move_cursor(-math.huge)  -- move cursor to top
         uf:use_virt_text(#matches .. ' / ' .. #lines)
@@ -177,7 +194,9 @@ local function open_live(getcmd, config)
         config = {config, 'table', true},
     })
     config = vim.tbl_deep_extend('keep', config or {}, open_live_defaults)
-    ansi.add_highlights()
+    if config.ansi then
+        ansi.add_highlights()
+    end
 
     local uf = core.Uf.new({
         on_complete = config.on_complete,
