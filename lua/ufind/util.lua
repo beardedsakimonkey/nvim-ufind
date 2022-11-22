@@ -60,6 +60,13 @@ local function errf(msg, ...)
     err(string.format(msg, ...))
 end
 
+---@param v   any
+---@param msg string
+local function assert(v, msg)
+    if not v then
+        error('[ufind] ' .. msg, 2)
+    end
+end
 
 ---@param cmd string
 ---@param args string[]
@@ -109,5 +116,6 @@ return {
     schedule_wrap_t = schedule_wrap_t,
     err = err,
     errf = errf,
+    assert = assert,
     spawn = spawn,
 }

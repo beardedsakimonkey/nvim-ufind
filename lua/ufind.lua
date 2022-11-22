@@ -56,6 +56,10 @@ local open_defaults = {
 ---@param items_or_getcmd any[]|string|fun():string,string[]?
 ---@param config? UfOpenConfig
 local function open(items_or_getcmd, config)
+    vim.validate({
+        items_or_getcmd = {items_or_getcmd, {'table', 'string', 'function'}},
+        config = {config, 'table', true},
+    })
     config = vim.tbl_deep_extend('keep', config or {}, open_defaults)
     local pattern, num_captures = arg.inject_empty_captures(config.pattern)
     local uf = core.Uf.new({
@@ -73,8 +77,6 @@ local function open(items_or_getcmd, config)
         end, items_or_getcmd)
     elseif t == 'function' or t == 'string' then
         lines = {}
-    else
-        util.errf('Invalid argument type %q', t)
     end
 
     function uf:get_selected_item()
@@ -170,7 +172,10 @@ local open_live_defaults = {
 ---@param getcmd string|fun(query: string): string,string[]?
 ---@param config? UfOpenLiveConfig
 local function open_live(getcmd, config)
-    assert(type(getcmd) == 'function' or type(getcmd) == 'string')
+    vim.validate({
+        getcmd = {getcmd, {'string', 'function'}},
+        config = {config, 'table', true},
+    })
     config = vim.tbl_deep_extend('keep', config or {}, open_live_defaults)
     ansi.add_highlights()
 

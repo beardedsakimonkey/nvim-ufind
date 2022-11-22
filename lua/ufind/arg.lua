@@ -1,4 +1,6 @@
--- Helper functions for preprocessing user-provided arguments
+---Helper functions for preprocessing user-provided arguments
+
+local util = require('ufind.util')
 
 local function inject_empty_captures(pat)
     local n = 0  -- number of captures found
@@ -11,7 +13,7 @@ local function inject_empty_captures(pat)
         n = n + 1
         return '()' .. match
     end)
-    assert(n ~= 0, ('Expected at least one capture in pattern %q'):format(pat))
+    util.assert(n ~= 0, ('Expected at least one capture in pattern %q'):format(pat))
     return sub, n
 end
 
