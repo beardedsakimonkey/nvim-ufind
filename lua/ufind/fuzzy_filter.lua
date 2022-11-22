@@ -140,7 +140,7 @@ local function parse_query(query_part)
         end
     end
     local term = query_part:sub(ts, te)
-    return term and
+    return #term > 0 and
         ---@class UfQuery
         {
             exact = exact,    -- '
@@ -148,7 +148,7 @@ local function parse_query(query_part)
             prefix = prefix,  -- ^
             suffix = suffix,  -- $
             term = term,
-        } or nil
+        } or nil  -- don't score results if there's no term
 end
 
 
@@ -189,8 +189,8 @@ local function filter(raw_queries, lines, pattern)
     local query_sets = parse_queries(raw_queries)
     local res = {}
 
-    local has_any_query = util.tbl_some(function(queries)
-        return not vim.tbl_isempty(queries)
+    local has_any_query = util.tbl_some(function(query_set)
+        return not vim.tbl_isempty(query_set)
     end, query_sets)
 
     if not has_any_query then
