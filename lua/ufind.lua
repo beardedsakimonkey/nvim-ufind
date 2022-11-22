@@ -53,7 +53,7 @@ local open_defaults = {
 }
 
 
----@param items_or_getcmd any[]|fun():string,string[]?
+---@param items_or_getcmd any[]|string|fun():string,string[]?
 ---@param config? UfOpenConfig
 local function open(items_or_getcmd, config)
     config = vim.tbl_deep_extend('keep', config or {}, open_defaults)
@@ -66,14 +66,15 @@ local function open(items_or_getcmd, config)
     })
 
     local lines
-    if type(items_or_getcmd) == 'table' then
+    local t = type(items_or_getcmd)
+    if t == 'table' then
         lines = vim.tbl_map(function(item)
             return config.get_value(item) -- TODO: warn on nil?
         end, items_or_getcmd)
-    elseif type(items_or_getcmd) == 'function' then
+    elseif t == 'function' or t == 'string' then
         lines = {}
     else
-        util.errf('Invalid argument type %q', items_or_getcmd)
+        util.errf('Invalid argument type %q', t)
     end
 
     function uf:get_selected_item()
@@ -129,13 +130,18 @@ local function open(items_or_getcmd, config)
         end
     end)
 
-    if type(items_or_getcmd) == 'function' then
+    if t == 'function' or t == 'string' then
         local function on_stdout(stdoutbuf)
             lines = vim.split(table.concat(stdoutbuf), '\n', {trimempty = true})
             local is_subs_chunk = #stdoutbuf > 1
             on_lines(is_subs_chunk)
         end
-        local cmd, args = items_or_getcmd()
+        local cmd, args
+        if t == 'string' then
+            cmd, args = arg.split_cmd(items_or_getcmd)
+        else
+            cmd, args = items_or_getcmd()
+        end
         util.spawn(cmd, args or {}, on_stdout)
     end
 
@@ -161,10 +167,10 @@ local open_live_defaults = {
 }
 
 
----@param getcmd fun(query: string): string,string[]?
+---@param getcmd string|fun(query: string): string,string[]?
 ---@param config? UfOpenLiveConfig
 local function open_live(getcmd, config)
-    assert(type(getcmd) == 'function')
+    assert(type(getcmd) == 'function' or type(getcmd) == 'string')
     config = vim.tbl_deep_extend('keep', config or {}, open_live_defaults)
     ansi.add_highlights()
 
@@ -233,7 +239,13 @@ local function open_live(getcmd, config)
         uf:move_cursor(-math.huge)  -- move cursor to top
         kill_prev()  -- kill previous job if active
         local query = uf.get_query(uf.input_bufs[1])
-        local cmd, args = getcmd(query)
+        local cmd, args
+        if type(getcmd) == 'string' then
+            cmd, args = arg.split_cmd(getcmd)
+            args[#args+1] = query
+        else
+            cmd, args = getcmd(query)
+        end
         render_results({}) -- clear results in case of no stdout
         local function on_stdout(stdoutbuf)
             render_results(stdoutbuf)

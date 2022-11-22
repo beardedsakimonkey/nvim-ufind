@@ -1,4 +1,8 @@
-local fuzzy_filter = require('ufind.fuzzy_filter')
+package.loaded['ufind.fuzzy_filter'] = nil
+package.loaded['ufind.arg'] = nil
+local fuzzy_filter = require'ufind.fuzzy_filter'
+local split_cmd = require'ufind.arg'._split_cmd_aux
+
 local filter = fuzzy_filter.filter
 local find_min_subsequence = fuzzy_filter._find_min_subsequence
 
@@ -73,5 +77,12 @@ asserteq(
     filter({"'fo"}, {'foo.lua', 'bar.lua'}, pat),
     {{index = 1, positions = {1, 2}, score = 3}}
 )
+
+asserteq(split_cmd('rg -f'), {'rg', '-f'})
+asserteq(split_cmd(' rg  -f '), {'rg', '-f'})
+
+asserteq(split_cmd([[rg -f "/Some path/"]]), {'rg', '-f', '/Some path/'})
+asserteq(split_cmd([[rg -f '/Some path/']]), {'rg', '-f', '/Some path/'})
+asserteq(split_cmd([[rg -f "/Some 'path'/"]]), {'rg', '-f', "/Some 'path'/"})
 
 print('ok')
