@@ -1,5 +1,4 @@
 local fuzzy_filter = require('ufind.fuzzy_filter')
-local util = require('ufind.util')
 local filter = fuzzy_filter.filter
 local find_min_subsequence = fuzzy_filter._find_min_subsequence
 
@@ -30,8 +29,8 @@ asserteq(
     nil
 )
 
-local pat = util.inject_empty_captures '^(.*)$'
-local pat_colon = util.inject_empty_captures '^([^:]-):(.*)$'
+local pat = require'ufind.arg'.inject_empty_captures '^(.*)$'
+local pat_colon = require'ufind.arg'.inject_empty_captures '^([^:]-):(.*)$'
 
 asserteq(
     filter({'x'}, {'x.lua', 'y.lua'}, pat),

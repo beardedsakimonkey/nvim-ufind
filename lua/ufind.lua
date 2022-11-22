@@ -1,5 +1,6 @@
 local core = require('ufind.core')
 local util = require('ufind.util')
+local arg = require('ufind.arg')
 local ansi = require('ufind.ansi')
 
 local api = vim.api
@@ -52,27 +53,11 @@ local open_defaults = {
 }
 
 
-local function inject_empty_captures(pat)
-    local n = 0  -- number of captures found
-    local sub = pat:gsub('%%?%b()', function(match)
-        -- TODO: we shouldn't inject for [(]%)
-        if vim.endswith(match, '()') or  -- (), %b()
-            vim.startswith(match, '%(') then  -- %(
-            return
-        end
-        n = n + 1
-        return '()' .. match
-    end)
-    assert(n ~= 0, ('Expected at least one capture in pattern %q'):format(pat))
-    return sub, n
-end
-
-
 ---@param items_or_getcmd any[]|fun():string,string[]?
 ---@param config? UfOpenConfig
 local function open(items_or_getcmd, config)
     config = vim.tbl_deep_extend('keep', config or {}, open_defaults)
-    local pattern, num_captures = inject_empty_captures(config.pattern)
+    local pattern, num_captures = arg.inject_empty_captures(config.pattern)
     local uf = core.Uf.new({
         on_complete = config.on_complete,
         num_inputs = num_captures,
