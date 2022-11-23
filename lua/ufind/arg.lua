@@ -2,6 +2,7 @@
 
 local util = require('ufind.util')
 
+
 local function inject_empty_captures(pat)
     local n = 0  -- number of captures found
     local sub = pat:gsub('%%?%b()', function(match)
@@ -67,6 +68,7 @@ local function split_cmd(cmd)
     local t = split_cmd_aux(cmd)
     return table.remove(t, 1), t
 end
+
 
 return {
     inject_empty_captures = inject_empty_captures,

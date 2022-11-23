@@ -21,6 +21,7 @@ local Uf = {
     redraw_results = function() error('Not implemented') end,
 }
 
+
 function Uf.new(opt)
     local o = {}
     setmetatable(o, {__index = Uf})

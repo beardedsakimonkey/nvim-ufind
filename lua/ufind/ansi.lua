@@ -6,6 +6,7 @@ local api = vim.api
 ---@field col_end number
 ---@field hl_group string
 
+
 ---@param lines string[]
 ---@return string[], UfHighlight[]
 local function parse(lines)
@@ -183,6 +184,7 @@ local function add_highlights()
         end
     end
 end
+
 
 -- print(parse([[[35mtest:[mYo]]))
 -- print(parse([[[01;31m[Kex[m[K =]]))

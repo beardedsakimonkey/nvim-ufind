@@ -232,6 +232,7 @@ local function filter(raw_queries, lines, pattern)
     return res
 end
 
+
 return {
     filter = filter,
     _find_min_subsequence = find_min_subsequence,  -- for testing

@@ -79,6 +79,7 @@ local function create_result_buf()
     return buf
 end
 
+
 return {
     create_wins = create_wins,
     handle_vimresized = handle_vimresized,
