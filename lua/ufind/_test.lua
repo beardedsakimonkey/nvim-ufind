@@ -1,8 +1,10 @@
 package.loaded['ufind.fuzzy_filter'] = nil
 package.loaded['ufind.arg'] = nil
-package.loaded['ufind.util'] = nil
+package.loaded['ufind.ansi'] = nil
+package.loaded['ufind.util'] = nil  -- clear out transitive deps as well
 local fuzzy_filter = require'ufind.fuzzy_filter'
 local split_cmd = require'ufind.arg'._split_cmd_aux
+local parse = require'ufind.ansi'.parse
 
 local filter = fuzzy_filter.filter
 local find_min_subsequence = fuzzy_filter._find_min_subsequence
@@ -86,5 +88,12 @@ asserteq(split_cmd('rg -f x'), {'rg', '-f', 'x'})
 asserteq(split_cmd([[rg -f "/Some path/"]]), {'rg', '-f', '/Some path/'})
 asserteq(split_cmd([[rg -f '/Some path/']]), {'rg', '-f', '/Some path/'})
 asserteq(split_cmd([[rg -f "/Some 'path'/"]]), {'rg', '-f', "/Some 'path'/"})
+
+asserteq(parse({[[[35mtest:[mYo]]}), {'test:Yo'})
+asserteq(parse({[[[01;31m[Kex[m[K =]]}), {'ex ='})
+asserteq(
+    parse({[[[0m[35mufind.lua[0m:[0m[32m25[0m: open({'~/[0m[1m[31mfoo[0m'})]]}),
+    {"ufind.lua:25: open({'~/foo'})"}
+)
 
 print('ok')

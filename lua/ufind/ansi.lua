@@ -186,10 +186,6 @@ local function add_highlights()
 end
 
 
--- print(parse([[[35mtest:[mYo]]))
--- print(parse([[[01;31m[Kex[m[K =]]))
--- print(parse([[[0m[35mufind.lua[0m:[0m[32m25[0m:--   require'ufind'.open({'~/[0m[1m[31mfoo[0m', '~/bar'})]]))
-
 return {
     parse = parse,
     strip = strip,
