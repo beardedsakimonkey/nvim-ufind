@@ -2,10 +2,10 @@ package.loaded['ufind.fuzzy_filter'] = nil
 package.loaded['ufind.arg'] = nil
 package.loaded['ufind.ansi'] = nil
 package.loaded['ufind.util'] = nil  -- clear out transitive deps as well
-local fuzzy_filter = require'ufind.fuzzy_filter'
+
 local split_cmd = require'ufind.arg'._split_cmd_aux
 local parse = require'ufind.ansi'.parse
-
+local fuzzy_filter = require'ufind.fuzzy_filter'
 local filter = fuzzy_filter.filter
 local find_min_subsequence = fuzzy_filter._find_min_subsequence
 

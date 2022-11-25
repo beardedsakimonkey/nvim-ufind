@@ -48,17 +48,16 @@ local open_defaults = {
     on_complete = function(cmd, item) vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(item)) end,
     pattern = '^(.*)$',
     ansi = false,
-    ---@type UfLayout
     layout = default_layout,
     keymaps = default_keymaps,
 }
 
 
----@param items_or_getcmd any[]|string|fun():string,string[]?
+---@param items_or_cmd any[]|string|fun():string,string[]?
 ---@param config? UfOpenConfig
-local function open(items_or_getcmd, config)
+local function open(items_or_cmd, config)
     vim.validate({
-        items_or_getcmd = {items_or_getcmd, {'table', 'string', 'function'}},
+        items_or_cmd = {items_or_cmd, {'table', 'string', 'function'}},
         config = {config, 'table', true},
     })
     config = vim.tbl_deep_extend('keep', config or {}, open_defaults)
@@ -74,12 +73,12 @@ local function open(items_or_getcmd, config)
     })
 
     local lines
-    local t = type(items_or_getcmd)
+    local t = type(items_or_cmd)
     if t == 'table' then
         lines = vim.tbl_map(function(item)
             return config.get_value(item) -- TODO: warn on nil?
-        end, items_or_getcmd)
-    elseif t == 'function' or t == 'string' then
+        end, items_or_cmd)
+    else
         lines = {}
     end
 
@@ -89,8 +88,8 @@ local function open(items_or_getcmd, config)
         local match = matches[cursor]
         -- Ensure user didn't hit enter on a query with no results
         if match ~= nil then
-            if type(items_or_getcmd) == 'table' then
-                return items_or_getcmd[match.index]
+            if type(items_or_cmd) == 'table' then
+                return items_or_cmd[match.index]
             else
                 return lines[match.index]
             end
@@ -157,9 +156,9 @@ local function open(items_or_getcmd, config)
         end
         local cmd, args
         if t == 'string' then
-            cmd, args = arg.split_cmd(items_or_getcmd)
+            cmd, args = arg.split_cmd(items_or_cmd)
         else
-            cmd, args = items_or_getcmd()
+            cmd, args = items_or_cmd()
         end
         util.spawn(cmd, args or {}, on_stdout)
     end
@@ -179,14 +178,13 @@ local open_live_defaults = {
     get_highlights = nil,
     ---@type UfOnComplete
     on_complete = function(cmd, item) vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(item)) end,
-    ansi = false, -- whether to parse ansi escape codes
-    ---@type UfLayout
+    ansi = false,
     layout = default_layout,
     keymaps = default_keymaps,
 }
 
 
----@param getcmd string|fun(query: string): string,string[]?
+---@param getcmd string|fun(query: string):string,string[]?
 ---@param config? UfOpenLiveConfig
 local function open_live(getcmd, config)
     vim.validate({
