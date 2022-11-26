@@ -28,19 +28,54 @@ TODO
   - [ ] implement OR query syntax?
   - [ ] documentation
 
-Usage
------
+Example config
+--------------
 ```lua
-require'ufind'.open({'~/foo', '~/bar'})
+local ufind = require'ufind'
 
--- using a custom data structure
-require'ufind'.open({{path='/home/blah/foo', label='foo'}},
-                    { get_value = function(item)
-                        return item.label
-                      end,
-                      on_complete = function(cmd, item)
-                        vim.cmd(cmd .. item.path)
-                      end })
+local function on_complete_grep(cmd, item)
+  local found, _, fname, linenr = item:find('^([^:]-):(%d+):')
+  if found then
+    vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(fname) .. '|' .. linenr)
+  end
+end
+
+-- Single-shot grep
+local function grep(query)
+  ufind.open('rg --vimgrep --no-column --fixed-strings --color=ansi --' .. query, {
+    pattern = '^([^:]-):%d+:(.*)$',
+    ansi = true,
+    on_complete = on_complete_grep,
+  })
+end
+vim.api.nvim_create_user_command('Grep', function(o) grep(o.args) end, {nargs = '+'})
+
+-- Live grep (command is rerun every time query is changed)
+local function live_grep()
+  ufind.open_live('rg --vimgrep --no-column --fixed-strings --color=ansi -- ', {
+    ansi = true,
+    on_complete = on_complete_grep,
+  })
+end
+vim.keymap.set('n', '<space>G', live_grep)
+
+-- Live find using a string command (the query is implicitly added to the end)
+local function find()
+  ufind.open_live('fd --color=always --type=file --', {ansi = true})
+end
+vim.keymap.set('n', '<space>f', find)
+
+-- Buffers (using a built-in helper)
+local function buffers()
+  ufind.open(require'ufind.source.buffers'())
+end
+vim.keymap.set('n', '<space>b', buffers)
+
+-- Oldfiles (using a built-in helper)
+local function oldfiles()
+  ufind.open(require'ufind.source.oldfiles'())
+end
+vim.keymap.set('n', '<space>o', oldfiles)
 ```
 
 Copyright
