@@ -3,7 +3,7 @@ local util = require('ufind.util')
 
 local api = vim.api
 
----@class Uf
+---@class Ufind
 ---@field cur_input number
 ---@field input_bufs number[]
 ---@field matches table

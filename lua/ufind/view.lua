@@ -1,6 +1,6 @@
 local api = vim.api
 
----@param cfg UfLayout
+---@param cfg UfindLayout
 local function get_win_layouts(cfg)
     local has_border = cfg.border ~= 'none'
     -- Size of the window
@@ -32,7 +32,7 @@ local function get_win_layouts(cfg)
 end
 
 
----@param cfg UfLayout
+---@param cfg UfindLayout
 local function create_wins(input_buf, result_buf, cfg)
     local input_win_layout, result_win_layout = get_win_layouts(cfg)
     local input_win = api.nvim_open_win(
@@ -53,7 +53,7 @@ local function create_wins(input_buf, result_buf, cfg)
 end
 
 
----@param cfg UfLayout
+---@param cfg UfindLayout
 local function handle_vimresized(input_win, result_win, cfg)
     local function relayout()
         local input_win_layout, result_win_layout = get_win_layouts(cfg)

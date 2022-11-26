@@ -6,58 +6,56 @@ local ansi = require('ufind.ansi')
 local api = vim.api
 local uv = vim.loop
 
----@alias UfGetHighlights fun(line: string): any[]?
----@alias UfOnComplete fun(cmd: 'edit'|'split'|'vsplit'|'tabedit', line: string)
-
----@class UfKeymaps
-local default_keymaps = {
-    quit = '<Esc>',
-    open = '<CR>',
-    open_split = '<C-s>',
-    open_vsplit = '<C-v>',
-    open_tab = '<C-t>',
-    up = {'<C-k>', '<Up>'},
-    down = {'<C-j>', '<Down>'},
-    page_up = {'<C-b>', '<PageUp>'},
-    page_down = {'<C-f>', '<PageDown>'},
-    home = '<Home>',
-    ['end'] = '<End>',
-    wheel_up = '<ScrollWheelUp>',
-    wheel_down = '<ScrollWheelDown>',
-    prev_scope = '<C-p>',
-    next_scope = '<C-n>',
-}
-
----@class UfLayout
-local default_layout = {
-    ---@type 'none'|'single'|'double'|'rounded'|'solid'|string[]
-    border = 'none',
-    height = 0.8,
-    width = 0.7,
-    input_on_top = true,
-}
-
----@class UfOpenConfig
-local open_defaults = {
-    ---@type UfGetHighlights
+---@class UfindConfig
+local default_config = {
+    -- Called when selecting an item to open.
+    ---@type fun(cmd: 'edit'|'split'|'vsplit'|'tabedit', line: string)
+    on_complete = function(cmd, line)
+        vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(line))
+    end,
+    -- Returns highlight ranges to highlight the result line.
+    ---@type fun(line: string): any[]?
     get_highlights = nil,
-    ---@type UfOnComplete
-    on_complete = function(cmd, line) vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(line)) end,
+    -- Lua pattern with capture groups that defines scopes that will be queried individually.
     pattern = '^(.*)$',
+    -- Whether to parse ansi escape codes.
     ansi = false,
-    layout = default_layout,
-    keymaps = default_keymaps,
+    ---@class UfindLayout
+    layout = {
+        ---@type 'none'|'single'|'double'|'rounded'|'solid'|string[]
+        border = 'none',
+        height = 0.8,
+        width = 0.7,
+        input_on_top = true,
+    },
+    ---@class UfindKeymaps
+    keymaps = {
+        quit = '<Esc>',
+        open = '<CR>',
+        open_split = '<C-s>',
+        open_vsplit = '<C-v>',
+        open_tab = '<C-t>',
+        up = {'<C-k>', '<Up>'},
+        down = {'<C-j>', '<Down>'},
+        page_up = {'<C-b>', '<PageUp>'},
+        page_down = {'<C-f>', '<PageDown>'},
+        home = '<Home>',
+        ['end'] = '<End>',
+        wheel_up = '<ScrollWheelUp>',
+        wheel_down = '<ScrollWheelDown>',
+        prev_scope = '<C-p>',
+        next_scope = '<C-n>',
+    },
 }
 
-
----@param lines_or_cmd string[]|string|fun():string,string[]?
----@param config? UfOpenConfig
-local function open(lines_or_cmd, config)
+---@param source string[]|string|fun():string,string[]?
+---@param config? UfindConfig
+local function open(source, config)
     vim.validate({
-        lines_or_cmd = {lines_or_cmd, {'table', 'string', 'function'}},
+        source = {source, {'table', 'string', 'function'}},
         config = {config, 'table', true},
     })
-    config = vim.tbl_deep_extend('keep', config or {}, open_defaults)
+    config = vim.tbl_deep_extend('keep', config or {}, default_config)
     if config.ansi then
         ansi.add_highlights()
     end
@@ -69,7 +67,7 @@ local function open(lines_or_cmd, config)
         keymaps = config.keymaps,
     })
 
-    local lines = type(lines_or_cmd) == 'table' and lines_or_cmd or {}
+    local lines = type(source) == 'table' and source or {}
 
     function uf:get_selected_line()
         local cursor = self:get_cursor()
@@ -132,17 +130,17 @@ local function open(lines_or_cmd, config)
         end
     end)
 
-    if type(lines_or_cmd) ~= 'table' then
+    if type(source) ~= 'table' then
         local function on_stdout(stdoutbuf)
             lines = vim.split(table.concat(stdoutbuf), '\n', {trimempty = true})
             local is_subs_chunk = #stdoutbuf > 1
             on_lines(is_subs_chunk)
         end
         local cmd, args
-        if type(lines_or_cmd) == 'string' then
-            cmd, args = arg.split_cmd(lines_or_cmd)
+        if type(source) == 'string' then
+            cmd, args = arg.split_cmd(source)
         else
-            cmd, args = lines_or_cmd()
+            cmd, args = source()
         end
         util.spawn(cmd, args or {}, on_stdout)
     end
@@ -156,26 +154,14 @@ local function open(lines_or_cmd, config)
 end
 
 
----@class UfOpenLiveConfig
-local open_live_defaults = {
-    ---@type UfGetHighlights
-    get_highlights = nil,
-    ---@type UfOnComplete
-    on_complete = function(cmd, line) vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(line)) end,
-    ansi = false,
-    layout = default_layout,
-    keymaps = default_keymaps,
-}
-
-
----@param getcmd string|fun(query: string):string,string[]?
----@param config? UfOpenLiveConfig
-local function open_live(getcmd, config)
+---@param source string|fun(query: string):string,string[]?
+---@param config? UfindConfig
+local function open_live(source, config)
     vim.validate({
-        getcmd = {getcmd, {'string', 'function'}},
+        source = {source, {'string', 'function'}},
         config = {config, 'table', true},
     })
-    config = vim.tbl_deep_extend('keep', config or {}, open_live_defaults)
+    config = vim.tbl_deep_extend('keep', config or {}, default_config)
     if config.ansi then
         ansi.add_highlights()
     end
@@ -246,11 +232,11 @@ local function open_live(getcmd, config)
         kill_prev()  -- kill previous job if active
         local query = uf.get_query(uf.input_bufs[1])
         local cmd, args
-        if type(getcmd) == 'string' then
-            cmd, args = arg.split_cmd(getcmd)
+        if type(source) == 'string' then
+            cmd, args = arg.split_cmd(source)
             args[#args+1] = query
         else
-            cmd, args = getcmd(query)
+            cmd, args = source(query)
         end
         render_results({}) -- clear results in case of no stdout
         local function on_stdout(stdoutbuf)

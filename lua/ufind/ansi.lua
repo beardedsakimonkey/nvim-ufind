@@ -1,6 +1,6 @@
 local api = vim.api
 
----@class UfHighlight
+---@class UfindHighlight
 ---@field line number
 ---@field col_start number
 ---@field col_end number
@@ -8,9 +8,9 @@ local api = vim.api
 
 
 ---@param lines string[]
----@return string[], UfHighlight[]
+---@return string[], UfindHighlight[]
 local function parse(lines)
-    ---@type UfHighlight[]
+    ---@type UfindHighlight[]
     local hls = {}
     local lines_noansi = {}
 
