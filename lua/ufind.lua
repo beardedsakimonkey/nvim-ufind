@@ -69,13 +69,7 @@ local function open(lines_or_cmd, config)
         keymaps = config.keymaps,
     })
 
-    local lines
-    local t = type(lines_or_cmd)
-    if t == 'table' then
-        lines = lines_or_cmd
-    else
-        lines = {}
-    end
+    local lines = type(lines_or_cmd) == 'table' and lines_or_cmd or {}
 
     function uf:get_selected_line()
         local cursor = self:get_cursor()
@@ -83,11 +77,7 @@ local function open(lines_or_cmd, config)
         local match = matches[cursor]
         -- Ensure user didn't hit enter on a query with no results
         if match ~= nil then
-            if type(lines_or_cmd) == 'table' then
-                return lines_or_cmd[match.index]
-            else
-                return lines[match.index]
-            end
+            return lines[match.index]
         end
     end
 
@@ -142,14 +132,14 @@ local function open(lines_or_cmd, config)
         end
     end)
 
-    if t == 'function' or t == 'string' then
+    if type(lines_or_cmd) ~= 'table' then
         local function on_stdout(stdoutbuf)
             lines = vim.split(table.concat(stdoutbuf), '\n', {trimempty = true})
             local is_subs_chunk = #stdoutbuf > 1
             on_lines(is_subs_chunk)
         end
         local cmd, args
-        if t == 'string' then
+        if type(lines_or_cmd) == 'string' then
             cmd, args = arg.split_cmd(lines_or_cmd)
         else
             cmd, args = lines_or_cmd()
