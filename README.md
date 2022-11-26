@@ -1,7 +1,8 @@
 ufind
 =====
 
-WIP
+**Work in progress**. The plugin should work bug-free, but expect breaking changes as the API is
+being fleshed out.
 
 Features
 --------
@@ -9,26 +10,112 @@ Features
     - e.g. `^([^:]-):%d+:(.*)$` enables filtering against the filename and the line seperately in
       the output of a grep command.
   - fzf style query syntax
-    - (e.g. `.c$ !^foo bar`)
+    - e.g. `.c$ !^foo 'bar baz`
   - ANSI escape code parsing
-  - No dependencies, no C FFI code to compile
-  - Fairly simple codebase (under 1k sloc)
+    - preserve color, bold, etc. of command output
+  - Fairly simple codebase (~1k sloc)
+    - no coroutines, no dependencies
+
+Non-features
+------------
+  - File preview
+  - Icon support
+  - Lots of built-in sources
+    - currently only `buffers` and `oldfiles` are provided
+  - Lots of configuration options
 
 TODO
 ----
-  - [x] `open` should take a command spec so the window opens immediately
-  - [ ] multiselect
-  - [x] configurable layout
-  - [x] configurable mappings
-  - [x] expose more highlight groups
-  - [x] lua type annotations
-  - [x] ansi parsing for `open`?
-  - [x] implement exact match query syntax
-  - [ ] implement OR query syntax?
-  - [ ] documentation
+  - [ ] Multiselect
+  - [ ] Improve fuzzy-filter ranking
+  - [ ] OR query syntax
 
-Example config
---------------
+API
+---
+Ufind provides just two functions:
+
+```lua
+---@param source string[] | string | fun():string,string[]?
+---@param config UfindConfig?
+require'ufind'.open(source, config)
+
+---@param source string | fun(query: string):string,string[]?
+---@param config UfindConfig?
+require'ufind'.open_live(source, config)
+```
+
+### `open(source [, config])`
+
+`open()` opens a finder window populated based on the `source` parameter, which can be an array of
+strings (e.g. `{'~/foo', '~/bar'}`). You can also pass a string command as `source` to run a command
+asynchronously (e.g. `rg --vimgrep foo`). The output of the command will be used to populate the
+finder. In rare cases when you want more control over the argument breakdown of the command, you can
+instead pass a function that returns the command name and an array of arguments (e.g. `function()
+return 'rg', {'--vimgrep', 'foo'} end`).
+
+Results in the `open()` window can be filtered using an [fzf-like
+syntax](https://github.com/junegunn/fzf/#search-syntax). (Note: the OR operator is not yet
+supported).
+
+### `open_live(source [, config])`
+
+Unlike `open()`, filtering results in an `open_live()` window will cause the command to be re-run.
+`open_live()` has a nearly identical API as `open()`, except that `source` cannot be an array of
+strings (it must be a command). In the case of a string command `source`, the current query will be
+implicitly added as the last argument (e.g. `rg --vimgrep -- `). If `source` is a function, the
+query will be passed in as a parameter (e.g. `function(query) return 'rg', {'--vimgrep', '--',
+query} end`).
+
+### `config`
+
+Both `open()` and `open_live()` accept an optional `config` argument. They are identical except that
+`pattern` is not supported by `open_live()`. The passed in `config` will be deep-merged with the
+default config:
+
+```lua
+---@class UfindConfig
+local default_config = {
+    -- Called when selecting an item to open.
+    ---@type fun(cmd: 'edit'|'split'|'vsplit'|'tabedit', line: string)
+    on_complete = function(cmd, line)
+        vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(line))
+    end,
+    -- Returns highlight ranges to highlight the result line.
+    ---@type fun(line: string): any[]?
+    get_highlights = nil,
+    -- Lua pattern with capture groups that defines scopes that will be queried individually.
+    pattern = '^(.*)$',
+    -- Whether to parse ansi escape codes.
+    ansi = false,
+    layout = {
+        ---@type 'none'|'single'|'double'|'rounded'|'solid'|string[]
+        border = 'none',
+        height = 0.8,
+        width = 0.7,
+        input_on_top = true,
+    },
+    keymaps = {
+        quit = '<Esc>',
+        open = '<CR>',
+        open_split = '<C-s>',
+        open_vsplit = '<C-v>',
+        open_tab = '<C-t>',
+        up = {'<C-k>', '<Up>'},
+        down = {'<C-j>', '<Down>'},
+        page_up = {'<C-b>', '<PageUp>'},
+        page_down = {'<C-f>', '<PageDown>'},
+        home = '<Home>',
+        ['end'] = '<End>',
+        wheel_up = '<ScrollWheelUp>',
+        wheel_down = '<ScrollWheelDown>',
+        prev_scope = '<C-p>',
+        next_scope = '<C-n>',
+    },
+}
+```
+
+Example configuration
+---------------------
 ```lua
 local ufind = require'ufind'
 
@@ -83,6 +170,12 @@ local function oldfiles()
 end
 vim.keymap.set('n', '<space>o', oldfiles)
 ```
+
+Similar plugins
+---------------
+  - [fzf-lua](https://github.com/ibhagwan/fzf-lua)
+  - [command-t](https://github.com/wincent/command-t/)
+  - [snap](https://github.com/camspiers/snap)
 
 Copyright
 ---------
