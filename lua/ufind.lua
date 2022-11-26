@@ -143,9 +143,10 @@ local function open(source, config)
         util.spawn(cmd, args or {}, on_stdout)
     end
 
+    local opts = { on_lines = function() on_lines(false) end }
     for _, buf in ipairs(uf.input_bufs) do
         -- Note: `on_lines` gets called immediately because of setting the prompt
-        api.nvim_buf_attach(buf, false, {on_lines = function() on_lines(false) end})
+        api.nvim_buf_attach(buf, false, opts)
     end
 
     vim.cmd('startinsert')
@@ -169,11 +170,11 @@ local function open_live(source, config)
     function uf:get_selected_line()
         local cursor = self:get_cursor()
         -- Grab line off the buffer because `matches` contains escape codes
-        local lines = api.nvim_buf_get_lines(self.result_buf, cursor-1, cursor, false)
-        if lines[1] == '' then  -- user hit enter on a query with no results
+        local line = api.nvim_buf_get_lines(self.result_buf, cursor-1, cursor, false)[1]
+        if line == '' then  -- user hit enter on a query with no results
             return nil
         end
-        return lines[1]
+        return line
     end
 
     local handle
@@ -232,7 +233,7 @@ local function open_live(source, config)
         else
             cmd, args = source(query)
         end
-        render_results({}) -- clear results in case of no stdout
+        render_results({})  -- clear results in case of no stdout
         local function on_stdout(stdoutbuf)
             render_results(stdoutbuf)
         end
