@@ -48,8 +48,8 @@ local default_config = {
     },
 }
 
----@param source string[]|string|fun():string,string[]?
----@param config? UfindConfig
+---@param source string[] | string | fun():string,string[]?
+---@param config UfindConfig?
 local function open(source, config)
     vim.validate({
         source = {source, {'table', 'string', 'function'}},
@@ -60,12 +60,7 @@ local function open(source, config)
         ansi.add_highlights()
     end
     local pattern, num_captures = arg.inject_empty_captures(config.pattern)
-    local uf = core.Uf.new({
-        on_complete = config.on_complete,
-        num_inputs = num_captures,
-        layout = config.layout,
-        keymaps = config.keymaps,
-    })
+    local uf = core.Uf.new(config, num_captures)
 
     -- Note: lines may contain ansi codes
     local lines = type(source) == 'table' and source or {}
@@ -157,8 +152,8 @@ local function open(source, config)
 end
 
 
----@param source string|fun(query: string):string,string[]?
----@param config? UfindConfig
+---@param source string | fun(query: string):string,string[]?
+---@param config UfindConfig?
 local function open_live(source, config)
     vim.validate({
         source = {source, {'string', 'function'}},
@@ -169,11 +164,7 @@ local function open_live(source, config)
         ansi.add_highlights()
     end
 
-    local uf = core.Uf.new({
-        on_complete = config.on_complete,
-        layout = config.layout,
-        keymaps = config.keymaps,
-    })
+    local uf = core.Uf.new(config)
 
     function uf:get_selected_line()
         local cursor = self:get_cursor()

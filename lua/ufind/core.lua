@@ -4,29 +4,31 @@ local util = require('ufind.util')
 local api = vim.api
 
 ---@class Ufind
----@field cur_input number
----@field input_bufs number[]
----@field matches table
----@field on_complete fun(string, any)
----@field orig_win number
----@field result_buf number
----@field input_win number
----@field result_win number
+---@field cur_input       number
+---@field input_bufs      number[]
+---@field on_complete     fun(string, string)
+---@field orig_win        number
+---@field result_buf      number
+---@field input_win       number
+---@field result_win      number
 ---@field vimresized_auid number
----@field top number 1-indexed
----@field results_ns number
----@field virt_ns number
+---@field matches         table
+---@field top             number (1-indexed)
+---@field results_ns      number
+---@field virt_ns         number
 local Uf = {
     get_selected_line = function() error('Not implemented') end,
     redraw_results = function() error('Not implemented') end,
 }
 
 
-function Uf.new(opt)
+---@param config     UfindConfig
+---@param num_inputs number?
+function Uf.new(config, num_inputs)
     local o = {}
     setmetatable(o, {__index = Uf})
 
-    local num_inputs = opt.num_inputs or 1
+    num_inputs = num_inputs or 1
     o.cur_input = 1
     o.input_bufs = {}
 
@@ -46,17 +48,17 @@ function Uf.new(opt)
     o.matches = {}  -- stores current matches for when we scroll
     o.top = 1  -- line number of the line at the top of the viewport
 
-    o.on_complete = opt.on_complete
+    o.on_complete = config.on_complete
     o.orig_win = api.nvim_get_current_win()
     o.result_buf = view.create_result_buf()
-    o.input_win, o.result_win = view.create_wins(o.input_bufs[1], o.result_buf, opt.layout)
-    o.vimresized_auid = view.handle_vimresized(o.input_win, o.result_win, opt.layout)
+    o.input_win, o.result_win = view.create_wins(o.input_bufs[1], o.result_buf, config.layout)
+    o.vimresized_auid = view.handle_vimresized(o.input_win, o.result_win, config.layout)
 
     o.results_ns = api.nvim_create_namespace('ufind/results')  -- for all highlights in the results window
     o.virt_ns = api.nvim_create_namespace('ufind/virt')  -- for the result count
 
     for i = 1, #o.input_bufs do
-        o:setup_keymaps(o.input_bufs[i], opt.keymaps)
+        o:setup_keymaps(o.input_bufs[i], config.keymaps)
     end
 
     return o
