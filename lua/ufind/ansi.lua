@@ -127,10 +127,9 @@ end
 
 
 ---Strip ansi escape codes from each line
-local function strip(lines)
-    return vim.tbl_map(function(line)
-        return line:gsub('\27%[[0-9;]-[\64-\126]', '')
-    end, lines)
+---@param line string
+local function strip(line)
+    return (line:gsub('\27%[[0-9;]-[\64-\126]', ''))
 end
 
 

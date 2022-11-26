@@ -67,6 +67,7 @@ local function open(source, config)
         keymaps = config.keymaps,
     })
 
+    -- Note: lines may contain ansi codes
     local lines = type(source) == 'table' and source or {}
 
     function uf:get_selected_line()
@@ -75,7 +76,8 @@ local function open(source, config)
         local match = matches[cursor]
         -- Ensure user didn't hit enter on a query with no results
         if match ~= nil then
-            return lines[match.index]
+            local line = lines[match.index]
+            return config.ansi and ansi.strip(line) or line
         end
     end
 
@@ -118,7 +120,8 @@ local function open(source, config)
         if not api.nvim_buf_is_valid(uf.result_buf) then  -- window has been closed
             return
         end
-        local lines_noansi = config.ansi and ansi.strip(lines) or lines  -- strip ansi for filtering
+        -- Strip ansi for filtering
+        local lines_noansi = config.ansi and vim.tbl_map(ansi.strip, lines) or lines
         local matches = require('ufind.fuzzy_filter').filter(uf:get_queries(), lines_noansi, pattern)
         uf.matches = matches  -- store matches for when we scroll
         uf:move_cursor(-math.huge)  -- move cursor to top
