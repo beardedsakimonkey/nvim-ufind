@@ -32,17 +32,24 @@ Example config
 ```lua
 local ufind = require'ufind'
 
-local function on_complete_grep(cmd, item)
-  local found, _, fname, linenr = item:find('^([^:]-):(%d+):')
+local function cfg(t)
+  return vim.tbl_deep_extend('keep', t or {}, {
+    layout = { border = 'single' },
+    keymaps = { open_vsplit = '<C-l>' },
+  })
+end
+
+local function on_complete_grep(cmd, line)
+  local found, _, fname, linenr = line:find('^([^:]-):(%d+):')
   if found then
     vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(fname) .. '|' .. linenr)
   end
 end
 
--- Single-shot grep
+-- Grep
 local function grep(query)
-  ufind.open('rg --vimgrep --no-column --fixed-strings --color=ansi --' .. query, {
-    pattern = '^([^:]-):%d+:(.*)$',
+  ufind.open('rg --vimgrep --no-column --fixed-strings --color=ansi -- ' .. query, cfg{
+    pattern = '^([^:]-):%d+:(.*)$',  -- enables scoped filtering
     ansi = true,
     on_complete = on_complete_grep,
   })
@@ -51,28 +58,28 @@ vim.api.nvim_create_user_command('Grep', function(o) grep(o.args) end, {nargs = 
 
 -- Live grep (command is rerun every time query is changed)
 local function live_grep()
-  ufind.open_live('rg --vimgrep --no-column --fixed-strings --color=ansi -- ', {
+  ufind.open_live('rg --vimgrep --no-column --fixed-strings --color=ansi -- ', cfg{
     ansi = true,
     on_complete = on_complete_grep,
   })
 end
-vim.keymap.set('n', '<space>G', live_grep)
+vim.keymap.set('n', '<space>g', live_grep)
 
--- Live find using a string command (the query is implicitly added to the end)
+-- Live find
 local function find()
-  ufind.open_live('fd --color=always --type=file --', {ansi = true})
+  ufind.open_live('fd --color=always --type=file --', cfg{ansi = true})
 end
 vim.keymap.set('n', '<space>f', find)
 
 -- Buffers (using a built-in helper)
 local function buffers()
-  ufind.open(require'ufind.source.buffers'())
+  ufind.open(require'ufind.source.buffers'(), cfg{})
 end
 vim.keymap.set('n', '<space>b', buffers)
 
--- Oldfiles (using a built-in helper)
+-- Oldfiles
 local function oldfiles()
-  ufind.open(require'ufind.source.oldfiles'())
+  ufind.open(require'ufind.source.oldfiles'(), cfg{})
 end
 vim.keymap.set('n', '<space>o', oldfiles)
 ```
