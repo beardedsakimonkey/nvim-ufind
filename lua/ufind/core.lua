@@ -17,7 +17,7 @@ local api = vim.api
 ---@field results_ns number
 ---@field virt_ns number
 local Uf = {
-    get_selected_item = function() error('Not implemented') end,
+    get_selected_line = function() error('Not implemented') end,
     redraw_results = function() error('Not implemented') end,
 }
 
@@ -202,10 +202,10 @@ end
 
 
 function Uf:open_result(cmd)
-    local item = self:get_selected_item()
-    if item ~= nil then
+    local line = self:get_selected_line()
+    if line ~= nil then
         self:quit()  -- cleanup first in case `on_complete` opens another finder
-        self.on_complete(cmd, item)
+        self.on_complete(cmd, line)
     end
 end
 

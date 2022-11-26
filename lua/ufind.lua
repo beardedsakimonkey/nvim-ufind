@@ -6,9 +6,8 @@ local ansi = require('ufind.ansi')
 local api = vim.api
 local uv = vim.loop
 
----@alias UfGetValue fun(item: any): string
 ---@alias UfGetHighlights fun(line: string): any[]?
----@alias UfOnComplete fun(cmd: 'edit'|'split'|'vsplit'|'tabedit', item: any)
+---@alias UfOnComplete fun(cmd: 'edit'|'split'|'vsplit'|'tabedit', line: string)
 
 ---@class UfKeymaps
 local default_keymaps = {
@@ -40,12 +39,10 @@ local default_layout = {
 
 ---@class UfOpenConfig
 local open_defaults = {
-    ---@type UfGetValue
-    get_value = function(item) return item end,
     ---@type UfGetHighlights
     get_highlights = nil,
     ---@type UfOnComplete
-    on_complete = function(cmd, item) vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(item)) end,
+    on_complete = function(cmd, line) vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(line)) end,
     pattern = '^(.*)$',
     ansi = false,
     layout = default_layout,
@@ -53,11 +50,11 @@ local open_defaults = {
 }
 
 
----@param items_or_cmd any[]|string|fun():string,string[]?
+---@param lines_or_cmd string[]|string|fun():string,string[]?
 ---@param config? UfOpenConfig
-local function open(items_or_cmd, config)
+local function open(lines_or_cmd, config)
     vim.validate({
-        items_or_cmd = {items_or_cmd, {'table', 'string', 'function'}},
+        lines_or_cmd = {lines_or_cmd, {'table', 'string', 'function'}},
         config = {config, 'table', true},
     })
     config = vim.tbl_deep_extend('keep', config or {}, open_defaults)
@@ -73,23 +70,21 @@ local function open(items_or_cmd, config)
     })
 
     local lines
-    local t = type(items_or_cmd)
+    local t = type(lines_or_cmd)
     if t == 'table' then
-        lines = vim.tbl_map(function(item)
-            return config.get_value(item) -- TODO: warn on nil?
-        end, items_or_cmd)
+        lines = lines_or_cmd
     else
         lines = {}
     end
 
-    function uf:get_selected_item()
+    function uf:get_selected_line()
         local cursor = self:get_cursor()
         local matches = self:get_visible_matches()
         local match = matches[cursor]
         -- Ensure user didn't hit enter on a query with no results
         if match ~= nil then
-            if type(items_or_cmd) == 'table' then
-                return items_or_cmd[match.index]
+            if type(lines_or_cmd) == 'table' then
+                return lines_or_cmd[match.index]
             else
                 return lines[match.index]
             end
@@ -101,7 +96,6 @@ local function open(items_or_cmd, config)
             return
         end
         for i, match in ipairs(uf:get_visible_matches()) do
-            -- TODO: pass in the item if any
             local hls = config.get_highlights(lines[match.index])
             for _, hl in ipairs(hls or {}) do
                 api.nvim_buf_add_highlight(uf.result_buf, uf.results_ns, hl[1], i-1, hl[2], hl[3])
@@ -156,9 +150,9 @@ local function open(items_or_cmd, config)
         end
         local cmd, args
         if t == 'string' then
-            cmd, args = arg.split_cmd(items_or_cmd)
+            cmd, args = arg.split_cmd(lines_or_cmd)
         else
-            cmd, args = items_or_cmd()
+            cmd, args = lines_or_cmd()
         end
         util.spawn(cmd, args or {}, on_stdout)
     end
@@ -177,7 +171,7 @@ local open_live_defaults = {
     ---@type UfGetHighlights
     get_highlights = nil,
     ---@type UfOnComplete
-    on_complete = function(cmd, item) vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(item)) end,
+    on_complete = function(cmd, line) vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(line)) end,
     ansi = false,
     layout = default_layout,
     keymaps = default_keymaps,
@@ -202,7 +196,7 @@ local function open_live(getcmd, config)
         keymaps = config.keymaps,
     })
 
-    function uf:get_selected_item()
+    function uf:get_selected_line()
         local cursor = self:get_cursor()
         -- Grab line off the buffer because `matches` contains escape codes
         local lines = api.nvim_buf_get_lines(self.result_buf, cursor-1, cursor, false)

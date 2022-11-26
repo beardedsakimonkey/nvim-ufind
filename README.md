@@ -10,7 +10,6 @@ Features
       the output of a grep command.
   - fzf style query syntax
     - (e.g. `.c$ !^foo bar`)
-  - Customizable display of results
   - ANSI escape code parsing
   - No dependencies, no C FFI code to compile
   - Fairly simple codebase (under 1k sloc)
