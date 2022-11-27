@@ -72,10 +72,10 @@ end
 
 ---@param cmd string
 ---@param args string[]
----@param onstdout fun(stdoutbuf: string[])
----@param onexit fun(exit: number, signal: number)?
+---@param on_stdout fun(stdoutbuf: string[])
+---@param on_exit fun(exit: number, signal: number)?
 ---@return userdata,number # handle, pid
-local function spawn(cmd, args, onstdout, onexit)
+local function spawn(cmd, args, on_stdout, on_exit)
     local uv = vim.loop
     local stdout, stderr = uv.new_pipe(), uv.new_pipe()
     local stdoutbuf, stderrbuf = {}, {}
@@ -89,8 +89,8 @@ local function spawn(cmd, args, onstdout, onexit)
                 err(table.concat(stderrbuf))
             end)
         end
-        if onexit then
-            onexit(exit_code, signal)
+        if on_exit then
+            on_exit(exit_code, signal)
         end
         handle:close()
     end)
@@ -98,7 +98,7 @@ local function spawn(cmd, args, onstdout, onexit)
         assert(not e, e)
         if chunk then
             stdoutbuf[#stdoutbuf+1] = chunk
-            onstdout(stdoutbuf)
+            on_stdout(stdoutbuf)
         end
     end)
     stderr:read_start(function(e, chunk)  -- on stderr

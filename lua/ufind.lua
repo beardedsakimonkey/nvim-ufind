@@ -9,9 +9,16 @@ local uv = vim.loop
 ---@class UfindConfig
 local default_config = {
     -- Called when selecting an item to open.
-    ---@type fun(cmd: 'edit'|'split'|'vsplit'|'tabedit', line: string)
-    on_complete = function(cmd, line)
-        vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(line))
+    ---@type fun(cmd: 'edit'|'split'|'vsplit'|'tabedit', lines: string[])
+    on_complete = function(cmd, lines)
+        for i, line in ipairs(lines) do
+            if i == #lines then  -- open the file
+                vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(line))
+            else  -- create the buffer
+                local buf = vim.fn.bufnr(line, true)
+                vim.bo[buf].buflisted = true
+            end
+        end
     end,
     -- Returns highlight ranges to highlight the result line.
     ---@type fun(line: string): any[]?
@@ -45,6 +52,7 @@ local default_config = {
         wheel_down = '<ScrollWheelDown>',
         prev_scope = '<C-p>',
         next_scope = '<C-n>',
+        toggle_select = '<Tab>',
     },
 }
 
@@ -65,15 +73,37 @@ local function open(source, config)
     -- Note: lines may contain ansi codes
     local lines = type(source) == 'table' and source or {}
 
-    function uf:get_selected_line()
-        local cursor = self:get_cursor()
-        local matches = self:get_visible_matches()
-        local match = matches[cursor]
-        -- Ensure user didn't hit enter on a query with no results
-        if match ~= nil then
-            local line = lines[match.index]
-            return config.ansi and ansi.strip(line) or line
+    function uf:get_selected_lines()
+        local idxs = {}
+        if next(self.selections) ~= nil then
+            for idx, _ in pairs(self.selections) do
+                idxs[#idxs+1] = idx
+            end
+        else
+            local cursor = self:get_cursor()
+            local matches = self:get_visible_matches()
+            idxs[#idxs+1] = matches[cursor].index
         end
+        return vim.tbl_map(function(i)
+            return config.ansi and ansi.strip(lines[i]) or lines[i]
+        end, idxs)
+    end
+
+    -- Note: we could avoid redundancy by only storing match indexes in `self.matches`. Then, in
+    -- `use_hl_matches()`, we'd have to recompute positions.
+    function uf:toggle_select()
+        local idx = self.top + self:get_cursor() - 1
+        local match = self.matches[idx]
+        if match == nil then  -- cursor is on an empty line
+            return
+        end
+        if self.selections[match.index] then
+            self.selections[match.index] = nil
+        else
+            self.selections[match.index] = true
+        end
+        uf:move_cursor(1)
+        self:redraw_results()
     end
 
     local function use_hl_lines()
@@ -90,12 +120,16 @@ local function open(source, config)
 
     function uf:redraw_results()
         api.nvim_buf_clear_namespace(self.result_buf, self.results_ns, 0, -1)
-        ---@diagnostic disable-next-line: redefined-local
-        local lines = vim.tbl_map(function(match)
-            return lines[match.index]
-        end, self:get_visible_matches())
+        local selected_linenrs = {}
+        local visible_lines = {}
+        for i, match in ipairs(self:get_visible_matches()) do
+            if self.selections[match.index] then
+                table.insert(selected_linenrs, i)
+            end
+            table.insert(visible_lines, lines[match.index])
+        end
         if config.ansi then
-            local lines_noansi, hls = ansi.parse(lines)
+            local lines_noansi, hls = ansi.parse(visible_lines)
             api.nvim_buf_set_lines(self.result_buf, 0, -1, true, lines_noansi)
             -- Note: need to add highlights *after* buf_set_lines
             for _, hl in ipairs(hls) do
@@ -103,9 +137,10 @@ local function open(source, config)
                     hl.line-1, hl.col_start-1, hl.col_end-1)
             end
         else
-            api.nvim_buf_set_lines(self.result_buf, 0, -1, true, lines)
+            api.nvim_buf_set_lines(self.result_buf, 0, -1, true, visible_lines)
             use_hl_lines()
         end
+        self:use_hl_multiselect(selected_linenrs)
         self:use_hl_matches()
     end
 
@@ -167,14 +202,38 @@ local function open_live(source, config)
 
     local uf = core.Uf.new(config)
 
-    function uf:get_selected_line()
-        local cursor = self:get_cursor()
-        -- Grab line off the buffer because `matches` contains escape codes
-        local line = api.nvim_buf_get_lines(self.result_buf, cursor-1, cursor, false)[1]
-        if line == '' then  -- user hit enter on a query with no results
-            return nil
+    function uf:get_selected_lines()
+        local lines = {}
+        if next(self.selections) ~= nil then
+            for idx, _ in pairs(self.selections) do
+                lines[#lines+1] = self.matches[idx]
+            end
+        else
+            local cursor = self:get_cursor()
+            local matches = self:get_visible_matches()
+            lines[#lines+1] = matches[cursor]
         end
-        return line
+        if config.ansi then
+            return vim.tbl_map(function(line)
+                return ansi.strip(line)
+            end, lines)
+        else
+            return lines
+        end
+    end
+
+    function uf:toggle_select()
+        local idx = self.top + self:get_cursor() - 1
+        if self.matches[idx] == nil then  -- cursor is on an empty line
+            return
+        end
+        if self.selections[idx] then
+            self.selections[idx] = nil
+        else
+            self.selections[idx] = true
+        end
+        uf:move_cursor(1)
+        self:redraw_results()
     end
 
     local handle
@@ -193,18 +252,27 @@ local function open_live(source, config)
     })
 
     function uf:redraw_results()
+        api.nvim_buf_clear_namespace(self.result_buf, self.results_ns, 0, -1)
+        local selected_linenrs = {}
+        local visible_lines = {}
+        for i, line in ipairs(self:get_visible_matches()) do
+            if self.selections[self.top + i - 1] then
+                table.insert(selected_linenrs, i)
+            end
+            table.insert(visible_lines, line)
+        end
         if config.ansi then
-            api.nvim_buf_clear_namespace(self.result_buf, self.results_ns, 0, -1)
-            local lines, hls = ansi.parse(self:get_visible_matches())
-            api.nvim_buf_set_lines(self.result_buf, 0, -1, true, lines)
+            local lines_noansi, hls = ansi.parse(visible_lines)
+            api.nvim_buf_set_lines(self.result_buf, 0, -1, true, lines_noansi)
             -- Note: need to add highlights *after* buf_set_lines
             for _, hl in ipairs(hls) do
                 api.nvim_buf_add_highlight(self.result_buf, self.results_ns, hl.hl_group,
                     hl.line-1, hl.col_start-1, hl.col_end-1)
             end
         else
-            api.nvim_buf_set_lines(self.result_buf, 0, -1, true, self:get_visible_matches())
+            api.nvim_buf_set_lines(self.result_buf, 0, -1, true, visible_lines)
         end
+        self:use_hl_multiselect(selected_linenrs)
     end
 
     -- Note: hot path (called on every chunk of stdout)
@@ -225,6 +293,7 @@ local function open_live(source, config)
     local function on_lines()
         uf:move_cursor(-math.huge)  -- move cursor to top
         kill_prev()  -- kill previous job if active
+        uf.selections = {}  -- reset multiselections
         local query = uf.get_query(uf.input_bufs[1])
         local cmd, args
         if type(source) == 'string' then

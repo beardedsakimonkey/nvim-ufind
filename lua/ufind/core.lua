@@ -12,13 +12,16 @@ local api = vim.api
 ---@field input_win       number
 ---@field result_win      number
 ---@field vimresized_auid number
----@field matches         table
+---@field matches         any[]
 ---@field top             number (1-indexed)
+---@field selections      number[]
 ---@field results_ns      number
 ---@field virt_ns         number
 local Uf = {
-    get_selected_line = function() error('Not implemented') end,
+    ---@return string[]
+    get_selected_lines = function() error('Not implemented') end,
     redraw_results = function() error('Not implemented') end,
+    toggle_select = function() error('Not implemented') end,
 }
 
 
@@ -44,9 +47,12 @@ function Uf.new(config, num_inputs)
         api.nvim_buf_add_highlight(o.input_bufs[i], -1, 'UfindPrompt', 0, 0, #prompt)
     end
 
-    -- Needed for occlusion of results
+    -- For occlusion of results
     o.matches = {}  -- stores current matches for when we scroll
     o.top = 1  -- line number of the line at the top of the viewport
+
+    -- For multiselect
+    o.selections = {}
 
     o.on_complete = config.on_complete
     o.orig_win = api.nvim_get_current_win()
@@ -204,10 +210,10 @@ end
 
 
 function Uf:open_result(cmd)
-    local line = self:get_selected_line()
-    if line ~= nil then
+    local lines = self:get_selected_lines()
+    if next(lines) ~= nil then
         self:quit()  -- cleanup first in case `on_complete` opens another finder
-        self.on_complete(cmd, line)
+        self.on_complete(cmd, lines)
     end
 end
 
@@ -247,6 +253,8 @@ function Uf:setup_keymaps(buf, keymaps)
             util.keymap('i', v, function() self:switch_input_buf(false) end, opts)
         elseif k == 'next_scope' then
             util.keymap('i', v, function() self:switch_input_buf(true) end, opts)
+        elseif k == 'toggle_select' then
+            util.keymap('i', v, function() self:toggle_select() end, opts)
         else
             util.errf('Invalid keymap name %q', k)
         end
@@ -268,7 +276,8 @@ end
 function Uf:use_hl_matches()
     for i, match in ipairs(self:get_visible_matches()) do
         for _, pos in ipairs(match.positions) do
-            api.nvim_buf_add_highlight(self.result_buf, self.results_ns, 'UfindMatch', i-1, pos-1, pos)
+            api.nvim_buf_add_highlight(self.result_buf, self.results_ns, 'UfindMatch',
+                i-1, pos-1, pos)
         end
     end
 end
@@ -284,5 +293,12 @@ function Uf:use_virt_text(text)
     end
 end
 
+
+function Uf:use_hl_multiselect(selected_linenrs)
+    for _, linenr in ipairs(selected_linenrs) do
+        api.nvim_buf_add_highlight(self.result_buf, self.results_ns, 'UfindMultiSelect',
+            linenr-1, 0, -1)
+    end
+end
 
 return {Uf = Uf}

@@ -26,7 +26,6 @@ Non-features
 
 TODO
 ----
-  - [ ] Multiselect
   - [ ] Improve fuzzy-filter ranking
   - [ ] OR query syntax
 
@@ -48,7 +47,7 @@ require'ufind'.open_live(source, config)
 
 `open()` opens a finder window populated based on the `source` parameter, which can be an array of
 strings (e.g. `{'~/foo', '~/bar'}`). You can also pass a string command as `source` to run a command
-asynchronously (e.g. `rg --vimgrep foo`). The output of the command will be used to populate the
+asynchronously (e.g. `'rg --vimgrep foo'`). The output of the command will be used to populate the
 finder. In rare cases when you want more control over the argument breakdown of the command, you can
 instead pass a function that returns the command name and an array of arguments (e.g. `function()
 return 'rg', {'--vimgrep', 'foo'} end`).
@@ -62,7 +61,7 @@ supported).
 Unlike `open()`, filtering results in an `open_live()` window will cause the command to be re-run.
 `open_live()` has a nearly identical API as `open()`, except that `source` cannot be an array of
 strings (it must be a command). In the case of a string command `source`, the current query will be
-implicitly added as the last argument (e.g. `rg --vimgrep -- `). If `source` is a function, the
+implicitly added as the last argument (e.g. `'rg --vimgrep -- '`). If `source` is a function, the
 query will be passed in as a parameter (e.g. `function(query) return 'rg', {'--vimgrep', '--',
 query} end`).
 
@@ -76,9 +75,16 @@ default config:
 ---@class UfindConfig
 local default_config = {
     -- Called when selecting an item to open.
-    ---@type fun(cmd: 'edit'|'split'|'vsplit'|'tabedit', line: string)
-    on_complete = function(cmd, line)
-        vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(line))
+    ---@type fun(cmd: 'edit'|'split'|'vsplit'|'tabedit', lines: string[])
+    on_complete = function(cmd, lines)
+        for i, line in ipairs(lines) do
+            if i == #lines then  -- open the file
+                vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(line))
+            else  -- create the buffer
+                local buf = vim.fn.bufnr(line, true)
+                vim.bo[buf].buflisted = true
+            end
+        end
     end,
     -- Returns highlight ranges to highlight the result line.
     ---@type fun(line: string): any[]?
@@ -110,6 +116,7 @@ local default_config = {
         wheel_down = '<ScrollWheelDown>',
         prev_scope = '<C-p>',
         next_scope = '<C-n>',
+        toggle_select = '<Tab>',
     },
 }
 ```
@@ -120,53 +127,60 @@ Example configuration
 local ufind = require'ufind'
 
 local function cfg(t)
-  return vim.tbl_deep_extend('keep', t or {}, {
-    layout = { border = 'single' },
-    keymaps = { open_vsplit = '<C-l>' },
-  })
+    return vim.tbl_deep_extend('keep', t or {}, {
+        layout = { border = 'single' },
+        keymaps = { open_vsplit = '<C-l>' },
+    })
 end
 
-local function on_complete_grep(cmd, line)
-  local found, _, fname, linenr = line:find('^([^:]-):(%d+):')
-  if found then
-    vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(fname) .. '|' .. linenr)
-  end
+local function on_complete_grep(cmd, lines)
+    for i, line in ipairs(lines) do
+        local found, _, fname, linenr = line:find('^([^:]-):(%d+):')
+        if found then
+            if i == #lines then
+                vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(fname) .. '|' .. linenr)
+            else  -- create the buffer
+                local buf = vim.fn.bufnr(fname, true)
+                vim.bo[buf].buflisted = true
+            end
+        end
+    end
 end
 
 -- Grep
 local function grep(query)
-  ufind.open('rg --vimgrep --no-column --fixed-strings --color=ansi -- ' .. query, cfg{
-    pattern = '^([^:]-):%d+:(.*)$',  -- enables scoped filtering
-    ansi = true,
-    on_complete = on_complete_grep,
-  })
+    ufind.open('rg --vimgrep --no-column --fixed-strings --color=ansi -- ' .. query, cfg{
+        pattern = '^([^:]-):%d+:(.*)$',  -- enables scoped filtering
+        ansi = true,
+        on_complete = on_complete_grep,
+    })
 end
 vim.api.nvim_create_user_command('Grep', function(o) grep(o.args) end, {nargs = '+'})
 
 -- Live grep (command is rerun every time query is changed)
 local function live_grep()
-  ufind.open_live('rg --vimgrep --no-column --fixed-strings --color=ansi -- ', cfg{
-    ansi = true,
-    on_complete = on_complete_grep,
-  })
+    ufind.open_live('rg --vimgrep --no-column --fixed-strings --color=ansi -- ', cfg{
+        ansi = true,
+        on_complete = on_complete_grep,
+    })
 end
 vim.keymap.set('n', '<space>g', live_grep)
 
 -- Live find
 local function find()
-  ufind.open_live('fd --color=always --type=file --', cfg{ansi = true})
+    ufind.open_live('fd --color=always --type=file --', cfg{ansi = true})
 end
 vim.keymap.set('n', '<space>f', find)
 
 -- Buffers (using a built-in helper)
 local function buffers()
-  ufind.open(require'ufind.source.buffers'(), cfg{})
+    ufind.open(require'ufind.source.buffers'(), cfg{})
 end
 vim.keymap.set('n', '<space>b', buffers)
 
 -- Oldfiles
 local function oldfiles()
-  ufind.open(require'ufind.source.oldfiles'(), cfg{})
+    ufind.open(require'ufind.source.oldfiles'(), cfg{})
 end
 vim.keymap.set('n', '<space>o', oldfiles)
 ```
