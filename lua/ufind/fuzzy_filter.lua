@@ -48,14 +48,24 @@ local function find_min_subsequence(str, chars)
 end
 
 
--- TODO: Prioritize by # matches to tail length ratio
+-- TODO: rank differently for non-path results (e.g. grep)
 local function calc_score(positions, str)
-    local tail = str:find('[^/]+/?$')
+    local tail_start = str:find('[^/]+/?$')
+    local tail_streak = tail_start
     local score = 0
     local prev_pos = -1
     for _, pos in ipairs(positions) do
-        if pos == prev_pos + 1 then score = score + 1 end   -- consecutive char
-        if tail and pos >= tail then score = score + 1 end  -- path tail
+        local consec = pos == prev_pos + 1
+        local tail = tail_start and pos >= tail_start
+        local word_start = pos == 0 or (pos > 1 and str:sub(pos-1, pos-1) == '/')
+
+        if consec     then score = score + 1 end  -- consecutive char
+        if tail       then score = score + 1 end  -- path tail
+        if word_start then score = score + 1 end  -- start of word
+        if consec and prev_pos == tail_streak then   -- consecutive streak from tail start
+            score = score + 1
+            tail_streak = pos
+        end
         prev_pos = pos
     end
     return score

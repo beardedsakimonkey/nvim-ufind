@@ -24,11 +24,6 @@ Non-features
     - currently only `buffers` and `oldfiles` are provided
   - Lots of configuration options
 
-TODO
-----
-  - [ ] Improve fuzzy-filter ranking
-  - [ ] OR query syntax
-
 API
 ---
 Ufind provides just two functions:
@@ -52,18 +47,17 @@ finder. In rare cases when you want more control over the argument breakdown of 
 instead pass a function that returns the command name and an array of arguments (e.g. `function()
 return 'rg', {'--vimgrep', 'foo'} end`).
 
-Results in the `open()` window can be filtered using an [fzf-like
+Results in the finder window can be filtered using an [fzf-like
 syntax](https://github.com/junegunn/fzf/#search-syntax). (Note: the OR operator is not yet
 supported).
 
 ### `open_live(source [, config])`
 
-Unlike `open()`, filtering results in an `open_live()` window will cause the command to be re-run.
-`open_live()` has a nearly identical API as `open()`, except that `source` cannot be an array of
-strings (it must be a command). In the case of a string command `source`, the current query will be
-implicitly added as the last argument (e.g. `'rg --vimgrep -- '`). If `source` is a function, the
-query will be passed in as a parameter (e.g. `function(query) return 'rg', {'--vimgrep', '--',
-query} end`).
+Filtering results in an `open_live()` window causes the command to be re-run. `open_live()` has a
+nearly identical API as `open()`, except that `source` cannot be an array of strings (it must be a
+command). In the case of a string command, the current query will be implicitly added as the last
+argument (e.g. `'rg --vimgrep -- '`). If `source` is a function, the query will be passed in as a
+parameter (e.g. `function(query) return 'rg', {'--vimgrep', '--', query} end`).
 
 ### `config`
 

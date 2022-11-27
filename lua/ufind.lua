@@ -277,18 +277,18 @@ local function open_live(source, config)
     end
 
     -- Note: hot path (called on every chunk of stdout)
-    local render_results = util.schedule_wrap_t(function(stdoutbuf)
+    local redraw = util.schedule_wrap_t(function(stdoutbuf)
         if not api.nvim_buf_is_valid(uf.result_buf) then  -- window has been closed
             return
         end
         local lines = vim.split(table.concat(stdoutbuf), '\n', {trimempty = true})
         uf.matches = lines  -- store matches for when we scroll
+        uf:use_virt_text(tostring(#lines))
         -- Perf: if we're redrawing from a subsequent chunk of stdout (ie not the initial chunk) and
         -- the viewport is already full with lines, avoid redrawing.
         if not (#stdoutbuf > 1 and api.nvim_buf_line_count(uf.result_buf) == uf:get_vp_height()) then
             uf:redraw_results()
         end
-        uf:use_virt_text(tostring(#lines))
     end)
 
     local function on_lines()
@@ -303,9 +303,9 @@ local function open_live(source, config)
         else
             cmd, args = source(query)
         end
-        render_results({})  -- clear results in case of no stdout
+        redraw({})  -- clear results in case of no stdout
         local function on_stdout(stdoutbuf)
-            render_results(stdoutbuf)
+            redraw(stdoutbuf)
         end
         handle = util.spawn(cmd, args or {}, on_stdout)
     end
