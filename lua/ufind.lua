@@ -144,9 +144,7 @@ local function open(source, config)
         self:use_hl_matches()
     end
 
-    -- `on_lines` can be called in various contexts wherein textlock could prevent changing buffer
-    -- contents and window layout. Use `schedule` to defer such operations to the main loop.
-    local on_lines = vim.schedule_wrap(function(is_subs_chunk)
+    local function on_lines(is_subs_chunk)
         if not api.nvim_buf_is_valid(uf.result_buf) then  -- window has been closed
             return
         end
@@ -161,13 +159,14 @@ local function open(source, config)
         if not (is_subs_chunk and api.nvim_buf_line_count(uf.result_buf) == uf:get_vp_height()) then
             uf:redraw_results()
         end
-    end)
+    end
 
     if type(source) ~= 'table' then
+        local on_lines_throttled = util.schedule_wrap_t(on_lines)
         local function on_stdout(stdoutbuf)
             lines = vim.split(table.concat(stdoutbuf), '\n', {trimempty = true})
             local is_subs_chunk = #stdoutbuf > 1
-            on_lines(is_subs_chunk)
+            on_lines_throttled(is_subs_chunk)
         end
         local cmd, args
         if type(source) == 'string' then
@@ -178,7 +177,9 @@ local function open(source, config)
         util.spawn(cmd, args or {}, on_stdout)
     end
 
-    local opts = { on_lines = function() on_lines(false) end }
+    -- `on_lines` can be called in various contexts wherein textlock could prevent changing buffer
+    -- contents and window layout. Use `schedule` to defer such operations to the main loop.
+    local opts = { on_lines = vim.schedule_wrap(function() on_lines(false) end) }
     for _, buf in ipairs(uf.input_bufs) do
         -- Note: `on_lines` gets called immediately because of setting the prompt
         api.nvim_buf_attach(buf, false, opts)
