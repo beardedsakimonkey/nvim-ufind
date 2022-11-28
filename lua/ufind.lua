@@ -14,14 +14,15 @@ local default_config = {
         for i, line in ipairs(lines) do
             if i == #lines then  -- open the file
                 vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(line))
-            else  -- create the buffer
+            else  -- create a buffer
                 local buf = vim.fn.bufnr(line, true)
                 vim.bo[buf].buflisted = true
             end
         end
     end,
-    -- Returns highlight ranges to highlight the result line.
-    ---@type fun(line: string): any[]?
+    -- Returns custom highlight ranges to highlight the result line.
+    ---@alias UfindHighlightRange {start_col: number, end_col: number, hl_group: string}
+    ---@type fun(line: string): UfindHighlightRange[]?
     get_highlights = nil,
     -- Lua pattern with capture groups that defines scopes that will be queried individually.
     pattern = '^(.*)$',
@@ -113,7 +114,8 @@ local function open(source, config)
         for i, match in ipairs(uf:get_visible_matches()) do
             local hls = config.get_highlights(lines[match.index])
             for _, hl in ipairs(hls or {}) do
-                api.nvim_buf_add_highlight(uf.result_buf, uf.results_ns, hl[1], i-1, hl[2], hl[3])
+                api.nvim_buf_add_highlight(uf.result_buf, uf.results_ns,
+                    hl.hl_group, i-1, hl.end_col, hl.start_col)
             end
         end
     end
