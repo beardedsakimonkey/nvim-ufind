@@ -1,3 +1,7 @@
+--[[
+     Run these tests with `:so`
+--]]
+
 package.loaded['ufind.fuzzy_filter'] = nil
 package.loaded['ufind.arg'] = nil
 package.loaded['ufind.ansi'] = nil
@@ -46,7 +50,7 @@ asserteq(
 
 asserteq(
     filter({'fil', 'foo'}, {'file.lua: print(foo)'}, pat_colon),
-    {{index = 1, positions = {1, 2, 3, 17, 18, 19}, score = 10}}
+    {{index = 1, positions = {1, 2, 3, 17, 18, 19}, score = 12}}
 )
 
 asserteq(
@@ -78,7 +82,7 @@ asserteq(
 -- Exact match succeeds
 asserteq(
     filter({"'fo"}, {'foo.lua', 'bar.lua'}, pat),
-    {{index = 1, positions = {1, 2}, score = 3}}
+    {{index = 1, positions = {1, 2}, score = 4}}
 )
 
 asserteq(split_cmd('rg -f'), {'rg', '-f'})

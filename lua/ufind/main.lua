@@ -95,7 +95,7 @@ function M.open(source, config)
         end, idxs)
     end
 
-    -- Note: we could avoid redundancy by only storing match indexes in `self.matches`. Then, in
+    -- TODO: we could avoid redundancy by only storing match indexes in `self.matches`. Then, in
     -- `use_hl_matches()`, we'd have to recompute positions.
     function uf:toggle_select()
         local idx = self.top + self:get_cursor() - 1
