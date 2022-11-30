@@ -24,7 +24,6 @@ local Uf = {
     toggle_select = function() error('Not implemented') end,
 }
 
-
 ---@param config     UfindConfig
 ---@param num_inputs number?
 function Uf.new(config, num_inputs)
@@ -70,7 +69,6 @@ function Uf.new(config, num_inputs)
     return o
 end
 
-
 function Uf:switch_input_buf(is_forward)
     local offset = is_forward and 1 or -1
     local i = self.cur_input + offset
@@ -84,19 +82,16 @@ function Uf:switch_input_buf(is_forward)
     api.nvim_win_set_buf(self.input_win, self.input_bufs[self.cur_input])
 end
 
-
 ---@return number The cursor line number (1-indexed)
 function Uf:get_cursor()
     local cursor = api.nvim_win_get_cursor(self.result_win)
     return cursor[1]
 end
 
-
 ---@return number The "viewport" height of the results window
 function Uf:get_vp_height()
     return api.nvim_win_get_height(self.result_win)
 end
-
 
 ---@param offset number
 ---@return boolean need_redraw
@@ -160,7 +155,6 @@ function Uf:move_cursor(offset)
     return false
 end
 
-
 ---@return number?
 local function get_mousescroll()
     local opt = vim.opt.mousescroll:get()
@@ -172,7 +166,6 @@ local function get_mousescroll()
     end
     return nil
 end
-
 
 ---@param m 'up'|'down'|'page_up'|'page_down'|'home'|'end'|'wheel_up'|'wheel_down' Cursor motion
 function Uf:move_cursor_and_redraw(m)
@@ -195,7 +188,6 @@ function Uf:move_cursor_and_redraw(m)
     end
 end
 
-
 function Uf:quit()
     api.nvim_del_autocmd(self.vimresized_auid)
     for _, buf in ipairs(self.input_bufs) do
@@ -208,7 +200,6 @@ function Uf:quit()
     if api.nvim_win_is_valid(self.result_win) then api.nvim_win_close(self.result_win, false) end
 end
 
-
 function Uf:open_result(cmd)
     local lines = self:get_selected_lines()
     if next(lines) ~= nil then
@@ -216,7 +207,6 @@ function Uf:open_result(cmd)
         self.on_complete(cmd, lines)
     end
 end
-
 
 ---@return string
 function Uf.get_query(buf)
@@ -226,12 +216,10 @@ function Uf.get_query(buf)
     return query:sub(1 + #prompt)  -- trim prompt from the query
 end
 
-
 ---@return string[]
 function Uf:get_queries()
     return vim.tbl_map(self.get_query, self.input_bufs)
 end
-
 
 function Uf:setup_keymaps(buf, keymaps)
     local opts = {nowait = true, silent = true, buffer = buf}
@@ -261,7 +249,6 @@ function Uf:setup_keymaps(buf, keymaps)
     end
 end
 
-
 function Uf:get_visible_matches()
     local visible_matches = {}
     local vp_height = self:get_vp_height()
@@ -272,16 +259,13 @@ function Uf:get_visible_matches()
     return visible_matches
 end
 
-
 function Uf:use_hl_matches()
     for i, match in ipairs(self:get_visible_matches()) do
         for _, pos in ipairs(match.positions) do
-            api.nvim_buf_add_highlight(self.result_buf, self.results_ns, 'UfindMatch',
-                i-1, pos-1, pos)
+            api.nvim_buf_add_highlight(self.result_buf, self.results_ns, 'UfindMatch', i-1, pos-1, pos)
         end
     end
 end
-
 
 function Uf:use_virt_text(text)
     for _, buf in ipairs(self.input_bufs) do
@@ -292,7 +276,6 @@ function Uf:use_virt_text(text)
         })
     end
 end
-
 
 function Uf:use_hl_multiselect(selected_linenrs)
     for _, linenr in ipairs(selected_linenrs) do

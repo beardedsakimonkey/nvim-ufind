@@ -1,7 +1,9 @@
+local M = {}
+
 ---@generic T : any
 ---@param fn fun(item: T): boolean
 ---@param tbl T[]
-local function tbl_some(fn, tbl)
+function M.tbl_some(fn, tbl)
     for _, v in ipairs(tbl) do
         if fn(v) then
             return true
@@ -10,9 +12,8 @@ local function tbl_some(fn, tbl)
     return false
 end
 
-
 ---Wrapper around `vim.keymap.set` that handles a list of lhs's
-local function keymap(mode, lhs, rhs, opts)
+function M.keymap(mode, lhs, rhs, opts)
     if type(lhs) == 'string' then
         vim.keymap.set(mode, lhs, rhs, opts)
     else
@@ -22,16 +23,14 @@ local function keymap(mode, lhs, rhs, opts)
     end
 end
 
-
-local function pack(...)
+function M.pack(...)
     return {...}
 end
-
 
 ---Alternative to `vim.schedule_wrap` that returns a throttled function, which,
 ---when called multiple times before finally invoked in the main loop, only
 ---calls the function once (with the arguments from the most recent call).
-local function schedule_wrap_t(fn)
+function M.schedule_wrap_t(fn)
     local args
     return function(...)
         if args == nil then  -- nothing scheduled
@@ -47,47 +46,28 @@ local function schedule_wrap_t(fn)
     end
 end
 
-
----@param ... string
-local function err(...)
-    vim.notify('[ufind] ' .. table.concat({...}, ' '), vim.log.levels.ERROR)
+---@param level number
+local function notify(level, ...)
+    vim.notify('[ufind] ' .. table.concat({...}, ' '), level)
 end
 
-
----@param ... string
-local function warn(...)
-    vim.notify('[ufind] ' .. table.concat({...}, ' '), vim.log.levels.WARN)
-end
-
+function M.err(...) notify(vim.log.levels.ERROR, ...) end
+function M.warn(...) notify(vim.log.levels.WARN, ...) end
+function M.warnf(...) M.warn(string.format(...)) end
+function M.errf(...) M.err(string.format(...)) end
 
 ---@param msg string
----@param ... string
-local function warnf(msg, ...)
-    warn(string.format(msg, ...))
-end
-
-
----@param msg string
----@param ... string
-local function errf(msg, ...)
-    err(string.format(msg, ...))
-end
-
-
----@param v   any
----@param msg string
-local function assert(v, msg)
+function M.assert(v, msg)
     if not v then
         error('[ufind] ' .. msg, 2)
     end
 end
 
-
 ---@param cmd string
 ---@param args string[]
 ---@param on_stdout fun(stdoutbuf: string[])
 ---@return vim.loop.Process?
-local function spawn(cmd, args, on_stdout)
+function M.spawn(cmd, args, on_stdout)
     local uv = vim.loop
     local stdout, stderr = uv.new_pipe(), uv.new_pipe()
     local stdoutbuf, stderrbuf = {}, {}
@@ -98,26 +78,26 @@ local function spawn(cmd, args, on_stdout)
     }, function(exit_code)  -- on exit
         if exit_code > 0 then
             vim.schedule(function()
-                warnf('Command exited non-zero: `%s %s`\n%s',
+                M.warnf('Command exited non-zero: `%s %s`\n%s',
                     cmd, table.concat(args, ' '), table.concat(stderrbuf))
             end)
         end
         handle:close()
     end)
     if not handle then -- invalid command, bad permissions, etc
-        errf('Failed to spawn: %s (%s)', cmd, pid_or_err)
+        M.errf('Failed to spawn: %s (%s)', cmd, pid_or_err)
         return nil
     end
 
     stdout:read_start(function(e, chunk)  -- on stdout
-        assert(not e, e)
+        M.assert(not e, e)
         if chunk then
             stdoutbuf[#stdoutbuf+1] = chunk
             on_stdout(stdoutbuf)
         end
     end)
     stderr:read_start(function(e, chunk)  -- on stderr
-        assert(not e, e)
+        M.assert(not e, e)
         if chunk then
             stderrbuf[#stderrbuf+1] = chunk
         end
@@ -125,16 +105,4 @@ local function spawn(cmd, args, on_stdout)
     return handle
 end
 
-
-return {
-    tbl_some = tbl_some,
-    keymap = keymap,
-    pack = pack,
-    schedule_wrap_t = schedule_wrap_t,
-    err = err,
-    errf = errf,
-    warn = warn,
-    warnf = warnf,
-    assert = assert,
-    spawn = spawn,
-}
+return M

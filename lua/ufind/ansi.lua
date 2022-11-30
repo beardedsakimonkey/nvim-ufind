@@ -1,15 +1,16 @@
 local api = vim.api
 
+local M = {}
+
 ---@class UfindHighlight
 ---@field line number
 ---@field col_start number
 ---@field col_end number
 ---@field hl_group string
 
-
 ---@param lines string[]
 ---@return string[], UfindHighlight[]
-local function parse(lines)
+function M.parse(lines)
     ---@type UfindHighlight[]
     local hls = {}
     local lines_noansi = {}
@@ -125,22 +126,19 @@ local function parse(lines)
     return lines_noansi, hls
 end
 
-
 ---Strip ansi escape codes from each line
 ---@param line string
-local function strip(line)
+function M.strip(line)
     return (line:gsub('\27%[[0-9;]-[\64-\126]', ''))
 end
-
 
 local function hl_exists(name)
     local ok = pcall(api.nvim_get_hl_by_name, name, true)
     return ok
 end
 
-
 ---Add ufind_* highlight groups if they don't already exist
-local function add_highlights()
+function M.add_highlights()
     -- Note: when termguicolors is set, it seems we can't use the terminal's preset 16 colors, so we
     -- use these color shorthands as an approximation.
     local color = {
@@ -184,9 +182,4 @@ local function add_highlights()
     end
 end
 
-
-return {
-    parse = parse,
-    strip = strip,
-    add_highlights = add_highlights,
-}
+return M

@@ -1,8 +1,10 @@
 local util = require('ufind.util')
 
+local M = {}
+
 ---Find the minimum subsequence in `str` containing `chars` (in order) using a
 ---sliding window algorithm.
-local function find_min_subsequence(str, chars)
+function M.find_min_subsequence(str, chars)  -- exposed for testing
     local s, c = 1, 1
     local seq = {
         length = -1,
@@ -112,7 +114,7 @@ local function fuzzy_match(str, queries)
                 return nil
             end
         else
-            local results = find_min_subsequence(str, q.term)
+            local results = M.find_min_subsequence(str, q.term)
             if not results then return nil end
             for _, pos in ipairs(results) do
                 positions[#positions+1] = pos
@@ -195,7 +197,7 @@ end
 ---@param raw_queries string[]
 ---@param lines string[]
 ---@param pattern string
-local function filter(raw_queries, lines, pattern)
+function M.filter(raw_queries, lines, pattern)
     local query_sets = parse_queries(raw_queries)
     local res = {}
 
@@ -242,8 +244,4 @@ local function filter(raw_queries, lines, pattern)
     return res
 end
 
-
-return {
-    filter = filter,
-    _find_min_subsequence = find_min_subsequence,  -- for testing
-}
+return M

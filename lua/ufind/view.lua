@@ -1,5 +1,7 @@
 local api = vim.api
 
+local M = {}
+
 ---@param cfg UfindLayout
 local function get_win_layouts(cfg)
     local has_border = cfg.border ~= 'none'
@@ -31,9 +33,8 @@ local function get_win_layouts(cfg)
     return input_win, result_win
 end
 
-
 ---@param cfg UfindLayout
-local function create_wins(input_buf, result_buf, cfg)
+function M.create_wins(input_buf, result_buf, cfg)
     local input_win_layout, result_win_layout = get_win_layouts(cfg)
     local input_win = api.nvim_open_win(
         input_buf,
@@ -52,9 +53,8 @@ local function create_wins(input_buf, result_buf, cfg)
     return input_win, result_win
 end
 
-
 ---@param cfg UfindLayout
-local function handle_vimresized(input_win, result_win, cfg)
+function M.handle_vimresized(input_win, result_win, cfg)
     local function relayout()
         local input_win_layout, result_win_layout = get_win_layouts(cfg)
         api.nvim_win_set_config(input_win, input_win_layout)
@@ -65,24 +65,16 @@ local function handle_vimresized(input_win, result_win, cfg)
     return api.nvim_create_autocmd('VimResized', {callback = relayout})
 end
 
-
-local function create_input_buf()
+function M.create_input_buf()
     local buf = api.nvim_create_buf(false, true)
     vim.bo[buf].buftype = 'prompt'
     return buf
 end
 
-
-local function create_result_buf()
+function M.create_result_buf()
     local buf = api.nvim_create_buf(false, true)
     vim.bo[buf].undolevels = -1
     return buf
 end
 
-
-return {
-    create_wins = create_wins,
-    handle_vimresized = handle_vimresized,
-    create_input_buf = create_input_buf,
-    create_result_buf = create_result_buf,
-}
+return M

@@ -6,6 +6,8 @@ local ansi = require('ufind.ansi')
 local api = vim.api
 local uv = vim.loop
 
+local M = {}
+
 ---@class UfindConfig
 local default_config = {
     -- Called when selecting an item to open.
@@ -59,7 +61,7 @@ local default_config = {
 
 ---@param source string[] | string | fun():string,string[]?
 ---@param config UfindConfig?
-local function open(source, config)
+function M.open(source, config)
     vim.validate({
         source = {source, {'table', 'string', 'function'}},
         config = {config, 'table', true},
@@ -190,10 +192,9 @@ local function open(source, config)
     vim.cmd('startinsert')
 end
 
-
 ---@param source string | fun(query: string):string,string[]?
 ---@param config UfindConfig?
-local function open_live(source, config)
+function M.open_live(source, config)
     vim.validate({
         source = {source, {'string', 'function'}},
         config = {config, 'table', true},
@@ -316,8 +317,4 @@ local function open_live(source, config)
     vim.cmd('startinsert')
 end
 
-
-return {
-    open = open,
-    open_live = open_live,
-}
+return M

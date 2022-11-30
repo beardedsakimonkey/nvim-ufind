@@ -3,11 +3,11 @@ package.loaded['ufind.arg'] = nil
 package.loaded['ufind.ansi'] = nil
 package.loaded['ufind.util'] = nil  -- clear out transitive deps as well
 
-local split_cmd = require'ufind.arg'._split_cmd_aux
+local split_cmd = require'ufind.arg'.split_cmd_aux
 local parse = require'ufind.ansi'.parse
 local fuzzy_filter = require'ufind.fuzzy_filter'
 local filter = fuzzy_filter.filter
-local find_min_subsequence = fuzzy_filter._find_min_subsequence
+local find_min_subsequence = fuzzy_filter.find_min_subsequence
 
 local function asserteq(a, b)
     assert(

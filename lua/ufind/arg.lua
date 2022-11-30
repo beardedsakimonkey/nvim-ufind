@@ -1,9 +1,12 @@
----Helper functions for preprocessing user-provided arguments
+--[[
+     Helper functions for preprocessing user-provided arguments.
+--]]
 
 local util = require('ufind.util')
 
+local M = {}
 
-local function inject_empty_captures(pat)
+function M.inject_empty_captures(pat)
     local n = 0  -- number of captures found
     local sub = pat:gsub('%%?%b()', function(match)
         -- TODO: we shouldn't inject for [(]%)
@@ -18,10 +21,8 @@ local function inject_empty_captures(pat)
     return sub, n
 end
 
-
----@private
 ---@return string[]
-local function split_cmd_aux(cmd)
+function M.split_cmd_aux(cmd)  -- exposed for testing
     if #cmd <= 2 then  -- can't be split
         return {cmd}
     end
@@ -60,18 +61,12 @@ local function split_cmd_aux(cmd)
     return ret
 end
 
-
 ---Naive command splitting. Doesn't handle escaped quotes.
 ---@param cmd string
 ---@return string,string[]?
-local function split_cmd(cmd)
-    local t = split_cmd_aux(cmd)
+function M.split_cmd(cmd)
+    local t = M.split_cmd_aux(cmd)
     return table.remove(t, 1), t
 end
 
-
-return {
-    inject_empty_captures = inject_empty_captures,
-    split_cmd = split_cmd,
-    _split_cmd_aux = split_cmd_aux,  -- for testing
-}
+return M
