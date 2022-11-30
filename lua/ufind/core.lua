@@ -48,8 +48,8 @@ function Uf.new(config, num_inputs)
         api.nvim_buf_add_highlight(o.input_bufs[i], -1, 'UfindPrompt', 0, 0, #prompt)
     end
 
-    if config.initial_filter ~= '' then
-        api.nvim_feedkeys(config.initial_filter, 'n', false)
+    if config.initial_query ~= '' then
+        api.nvim_feedkeys(config.initial_query, 'n', false)
     end
 
     -- For occlusion of results

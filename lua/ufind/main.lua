@@ -30,8 +30,8 @@ local default_config = {
     pattern = '^(.*)$',
     -- Whether to parse ansi escape codes.
     ansi = false,
-    -- Initial filter to use when first opened.
-    initial_filter = '',
+    -- Initial query to use when first opened.
+    initial_query = '',
     ---@class UfindLayout
     layout = {
         ---@type 'none'|'single'|'double'|'rounded'|'solid'|string[]

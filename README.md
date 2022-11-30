@@ -7,7 +7,7 @@ being fleshed out.
 Features
 --------
   - Fuzzy filtering that's scoped to fields defined by a regex
-    - e.g. `^([^:]-):%d+:(.*)$` enables filtering against the filename and the line seperately in
+    - e.g. `^([^:]-):%d+:(.*)$` enables querying against the filename and the line seperately in
       the output of a grep command.
   - fzf style query syntax
     - e.g. `.c$ !^foo 'bar baz`
@@ -53,7 +53,7 @@ supported).
 
 ### `open_live(source [, config])`
 
-Filtering results in an `open_live()` window causes the command to be re-run. `open_live()` has a
+Typing a query in an `open_live()` window causes the command to be re-run. `open_live()` has a
 nearly identical API as `open()`, except that `source` cannot be an array of strings (it must be a
 command). In the case of a string command, the current query will be implicitly added as the last
 argument (e.g. `'rg --vimgrep -- '`). If `source` is a function, the query will be passed in as a
@@ -88,8 +88,8 @@ local default_config = {
     pattern = '^(.*)$',
     -- Whether to parse ansi escape codes.
     ansi = false,
-    -- Initial filter to use when first opened.
-    initial_filter = '',
+    -- Initial query to use when first opened.
+    initial_query = '',
     layout = {
         ---@type 'none'|'single'|'double'|'rounded'|'solid'|string[]
         border = 'none',
@@ -148,7 +148,7 @@ end
 -- Grep
 local function grep(query)
     ufind.open('rg --vimgrep --no-column --fixed-strings --color=ansi -- ' .. query, cfg{
-        pattern = '^([^:]-):%d+:(.*)$',  -- enables scoped filtering
+        pattern = '^([^:]-):%d+:(.*)$',  -- enables scoped querying
         ansi = true,
         on_complete = on_complete_grep,
     })
