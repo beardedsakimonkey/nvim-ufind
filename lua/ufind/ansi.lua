@@ -35,10 +35,10 @@ function M.parse(lines)
         -- since this can conflict with codepoints in other modern encodings, the
         -- 2-byte representation is typically used. So, we only scan for that one.
         -- Ref: https://en.wikipedia.org/wiki/ANSI_escape_code#Fe_Escape_sequences
-        local line_noansi = line:gsub('()\27%[([0-9;]-)([\64-\126])', function(pos, params, final)
+        local line_noansi = line:gsub('()\27%[([0-9;:]-)([\64-\126])', function(pos, params, final)
             if final == 'm' then  -- final byte indicates an SGR sequence
                 pos = pos + offset  -- adjust pos for any previous substitutions
-                for param in vim.gsplit(params, ';', true) do
+                for param in vim.gsplit(params, '[;:]', false) do
                     local p = tonumber(param) or 0
                     if p == 1 then  -- bold
                         bold_start = pos
@@ -129,7 +129,7 @@ end
 ---Strip ansi escape codes from each line
 ---@param line string
 function M.strip(line)
-    return (line:gsub('\27%[[0-9;]-[\64-\126]', ''))
+    return (line:gsub('\27%[[0-9;:]-[\64-\126]', ''))
 end
 
 local function hl_exists(name)
