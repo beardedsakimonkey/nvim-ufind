@@ -150,6 +150,8 @@ function M.open(source, config)
         self:use_hl_matches()
     end
 
+    local is_loading = false
+
     local function on_lines(is_subs_chunk)
         if not api.nvim_buf_is_valid(uf.result_buf) then  -- window has been closed
             return
@@ -159,7 +161,7 @@ function M.open(source, config)
         local matches = require('ufind.fuzzy_filter').filter(uf:get_queries(), lines_noansi, pattern)
         uf.matches = matches  -- store matches for when we scroll
         uf:move_cursor(-math.huge)  -- move cursor to top
-        uf:use_virt_text(#matches .. ' / ' .. #lines)
+        uf:use_virt_text(#matches .. ' / ' .. #lines .. (is_loading and '...' or ''))
         -- Perf: if we're redrawing from a subsequent chunk of stdout (ie not the initial chunk) and
         -- the viewport is already full with lines, avoid redrawing.
         if not (is_subs_chunk and api.nvim_buf_line_count(uf.result_buf) == uf:get_vp_height()) then
@@ -180,7 +182,12 @@ function M.open(source, config)
         else
             cmd, args = source()
         end
-        util.spawn(cmd, args or {}, on_stdout)
+        is_loading = true
+        local function on_exit()
+            is_loading = false
+            on_lines_throttled(true)  -- re-render virt text without loading indicator
+        end
+        util.spawn(cmd, args or {}, on_stdout, on_exit)
     end
 
     -- `on_lines` can be called in various contexts wherein textlock could prevent changing buffer
@@ -281,14 +288,15 @@ function M.open_live(source, config)
         self:use_hl_multiselect(selected_linenrs)
     end
 
-    -- Note: hot path (called on every chunk of stdout)
+    local is_loading = true
+
     local redraw = util.schedule_wrap_t(function(stdoutbuf)
         if not api.nvim_buf_is_valid(uf.result_buf) then  -- window has been closed
             return
         end
         local lines = vim.split(table.concat(stdoutbuf), '\n', {trimempty = true})
         uf.matches = lines  -- store matches for when we scroll
-        uf:use_virt_text(tostring(#lines))
+        uf:use_virt_text(tostring(#lines) .. (is_loading and '...' or ''))
         -- Perf: if we're redrawing from a subsequent chunk of stdout (ie not the initial chunk) and
         -- the viewport is already full with lines, avoid redrawing.
         if not (#stdoutbuf > 1 and api.nvim_buf_line_count(uf.result_buf) == uf:get_vp_height()) then
@@ -312,7 +320,12 @@ function M.open_live(source, config)
         local function on_stdout(stdoutbuf)
             redraw(stdoutbuf)
         end
-        handle = util.spawn(cmd, args or {}, on_stdout)
+        local function on_exit(stdoutbuf)
+            is_loading = false
+            redraw(stdoutbuf)  -- re-render virt text without loading indicator
+        end
+        is_loading = true
+        handle = util.spawn(cmd, args or {}, on_stdout, on_exit)
     end
 
     api.nvim_buf_attach(uf.input_bufs[1], false, {on_lines = on_lines})
