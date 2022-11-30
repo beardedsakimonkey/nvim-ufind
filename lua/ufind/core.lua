@@ -12,6 +12,7 @@ local api = vim.api
 ---@field input_win       number
 ---@field result_win      number
 ---@field vimresized_auid number
+---@field winclosed_auid  number
 ---@field matches         any[]
 ---@field top             number (1-indexed)
 ---@field selections      number[]
@@ -62,6 +63,9 @@ function Uf.new(config, num_inputs)
     o.result_buf = view.create_result_buf()
     o.input_win, o.result_win = view.create_wins(o.input_bufs[1], o.result_buf, config.layout)
     o.vimresized_auid = view.handle_vimresized(o.input_win, o.result_win, config.layout)
+    o.winclosed_auid = api.nvim_create_autocmd('WinClosed', {callback = function()
+        o:quit()
+    end})
 
     o.results_ns = api.nvim_create_namespace('ufind/results')  -- for all highlights in the results window
     o.virt_ns = api.nvim_create_namespace('ufind/virt')  -- for the result count
@@ -193,6 +197,8 @@ function Uf:move_cursor_and_redraw(m)
 end
 
 function Uf:quit()
+    -- Important to delete the WinClosed autocmd *before* closing windows
+    api.nvim_del_autocmd(self.winclosed_auid)
     api.nvim_del_autocmd(self.vimresized_auid)
     for _, buf in ipairs(self.input_bufs) do
         if api.nvim_buf_is_valid(buf) then api.nvim_buf_delete(buf, {force = true}) end
