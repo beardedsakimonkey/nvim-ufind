@@ -201,7 +201,17 @@ function M.open(source, config)
             is_loading = false
             on_lines_throttled(true)  -- re-render virt text without loading indicator
         end
-        util.spawn(cmd, args or {}, on_stdout, on_exit)
+        local handle = util.spawn(cmd, args or {}, on_stdout, on_exit)
+
+        api.nvim_create_autocmd('BufUnload', {
+            callback = function()
+                if handle and handle:is_active() then
+                    handle:kill(uv.constants.SIGTERM)
+                end
+            end,
+            buffer = uf.input_buf,
+            once = true,  -- for some reason, BufUnload fires twice otherwise
+        })
     end
 
     -- `on_lines` can be called in various contexts wherein textlock could prevent changing buffer
