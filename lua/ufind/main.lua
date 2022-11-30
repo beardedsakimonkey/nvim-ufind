@@ -175,7 +175,7 @@ function M.open(source, config)
         local matches = require('ufind.fuzzy_filter').filter(uf:get_queries(), lines_noansi, pattern)
         uf.matches = matches  -- store matches for when we scroll
         uf:move_cursor(-math.huge)  -- move cursor to top
-        uf:use_virt_text(#matches .. ' / ' .. #lines .. (is_loading and '...' or ''))
+        uf:use_virt_text(#matches .. ' / ' .. #lines .. (is_loading and '…' or ''))
         -- Perf: if we're redrawing from a subsequent chunk of stdout (ie not the initial chunk) and
         -- the viewport is already full with lines, avoid redrawing.
         if not (is_subs_chunk and api.nvim_buf_line_count(uf.result_buf) == uf:get_vp_height()) then
@@ -347,7 +347,7 @@ function M.open_live(source, config)
         end
         local lines = vim.split(table.concat(stdoutbuf), '\n', {trimempty = true})
         uf.matches = lines  -- store matches for when we scroll
-        uf:use_virt_text(tostring(#lines) .. (is_loading and '...' or ''))
+        uf:use_virt_text(tostring(#lines) .. (is_loading and '…' or ''))
         -- Perf: if we're redrawing from a subsequent chunk of stdout (ie not the initial chunk) and
         -- the viewport is already full with lines, avoid redrawing.
         if not (#stdoutbuf > 1 and api.nvim_buf_line_count(uf.result_buf) == uf:get_vp_height()) then
