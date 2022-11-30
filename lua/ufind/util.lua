@@ -63,11 +63,12 @@ function M.assert(v, msg)
     end
 end
 
----@param cmd string
----@param args string[]
+---@param cmd       string
+---@param args      string[]
 ---@param on_stdout fun(stdoutbuf: string[])
+---@param on_exit   fun(stdoutbuf: string[])?
 ---@return vim.loop.Process?
-function M.spawn(cmd, args, on_stdout)
+function M.spawn(cmd, args, on_stdout, on_exit)
     local uv = vim.loop
     local stdout, stderr = uv.new_pipe(), uv.new_pipe()
     local stdoutbuf, stderrbuf = {}, {}
@@ -75,12 +76,17 @@ function M.spawn(cmd, args, on_stdout)
     handle, pid_or_err = uv.spawn(cmd, {
         stdio = {nil, stdout, stderr},
         args = args,
-    }, function(exit_code)  -- on exit
-        if exit_code > 0 then
+    }, function()  -- on exit
+        -- Note: don't check exit code because some commands exit non-zero when successfully
+        -- returning nothing.
+        if next(stderrbuf) ~= nil then
             vim.schedule(function()
-                M.warnf('Command exited non-zero: `%s %s`\n%s',
-                    cmd, table.concat(args, ' '), table.concat(stderrbuf))
+                M.warnf('Command `%s %s` wrote to stderr:\n%s',
+                cmd, table.concat(args, ' '), table.concat(stderrbuf))
             end)
+        end
+        if on_exit then
+            on_exit(stdoutbuf)
         end
         handle:close()
     end)
