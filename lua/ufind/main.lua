@@ -23,7 +23,7 @@ local default_config = {
         end
     end,
     -- Returns custom highlight ranges to highlight the result line.
-    ---@alias UfindHighlightRange {start_col: number, end_col: number, hl_group: string}
+    ---@alias UfindHighlightRange {col_start: number, col_end: number, hl_group: string}
     ---@type fun(line: string): UfindHighlightRange[]?
     get_highlights = nil,
     -- Lua pattern with capture groups that defines scopes that will be queried individually.
@@ -133,7 +133,7 @@ function M.open(source, config)
             local hls = config.get_highlights(lines[match.index])
             for _, hl in ipairs(hls or {}) do
                 api.nvim_buf_add_highlight(uf.result_buf, uf.results_ns,
-                    hl.hl_group, i-1, hl.end_col, hl.start_col)
+                    hl.hl_group, i-1, hl.col_start, hl.col_end)
             end
         end
     end
@@ -275,6 +275,20 @@ function M.open_live(source, config)
         self:redraw_results()
     end
 
+    local function use_hl_lines()
+        if not config.get_highlights then
+            return
+        end
+        for i, match in ipairs(uf:get_visible_matches()) do
+            local hls = config.get_highlights(match)
+            for _, hl in ipairs(hls or {}) do
+                print(hl)
+                api.nvim_buf_add_highlight(uf.result_buf, uf.results_ns,
+                    hl.hl_group, i-1, hl.col_start, hl.col_end)
+            end
+        end
+    end
+
     local handle
 
     local function kill_prev()
@@ -310,6 +324,7 @@ function M.open_live(source, config)
             end
         else
             api.nvim_buf_set_lines(self.result_buf, 0, -1, true, visible_lines)
+            use_hl_lines()
         end
         self:use_hl_multiselect(selected_linenrs)
     end
