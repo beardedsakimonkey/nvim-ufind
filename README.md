@@ -114,6 +114,7 @@ local default_config = {
         prev_scope = '<C-p>',
         next_scope = '<C-n>',
         toggle_select = '<Tab>',
+        toggle_select_all = '<C-a>',
     },
 }
 ```

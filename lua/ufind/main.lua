@@ -58,6 +58,7 @@ local default_config = {
         prev_scope = '<C-p>',
         next_scope = '<C-n>',
         toggle_select = '<Tab>',
+        toggle_select_all = '<C-a>',
     },
 }
 
@@ -107,7 +108,20 @@ function M.open(source, config)
         else
             self.selections[match.index] = true
         end
+        print(self.selections)
         uf:move_cursor(1)
+        self:redraw_results()
+    end
+
+    function uf:toggle_select_all()
+        if next(self.selections) then -- select none
+            self.selections = {}
+        else -- select all
+            self.selections = {}
+            for i = 1, #self.matches do
+                self.selections[self.matches[i].index] = true
+            end
+        end
         self:redraw_results()
     end
 
@@ -246,6 +260,18 @@ function M.open_live(source, config)
             self.selections[idx] = true
         end
         uf:move_cursor(1)
+        self:redraw_results()
+    end
+
+    function uf:toggle_select_all()
+        if next(self.selections) then -- select none
+            self.selections = {}
+        else -- select all
+            self.selections = {}
+            for i = 1, #self.matches do
+                self.selections[i] = true
+            end
+        end
         self:redraw_results()
     end
 

@@ -15,7 +15,7 @@ local api = vim.api
 ---@field winclosed_auid  number
 ---@field matches         any[]
 ---@field top             number (1-indexed)
----@field selections      number[]
+---@field selections      {[number]: boolean}
 ---@field results_ns      number
 ---@field virt_ns         number
 local Uf = {
@@ -23,6 +23,7 @@ local Uf = {
     get_selected_lines = function() error('Not implemented') end,
     redraw_results = function() error('Not implemented') end,
     toggle_select = function() error('Not implemented') end,
+    toggle_select_all = function() error('Not implemented') end,
 }
 
 ---@param config     UfindConfig
@@ -253,6 +254,8 @@ function Uf:setup_keymaps(buf, keymaps)
             util.keymap('i', v, function() self:switch_input_buf(true) end, opts)
         elseif k == 'toggle_select' then
             util.keymap('i', v, function() self:toggle_select() end, opts)
+        elseif k == 'toggle_select_all' then
+            util.keymap('i', v, function() self:toggle_select_all() end, opts)
         else
             util.errf('Invalid keymap name %q', k)
         end
