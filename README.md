@@ -13,13 +13,13 @@ Features
     - e.g. `.c$ !^foo 'bar baz`
   - ANSI escape code parsing
     - preserve color, bold, etc. of command output
-  - Fairly simple codebase (~1k sloc)
-    - no coroutines, no dependencies
+  - Easy to debug
+    - ~1k sloc, no coroutines, no dependencies
 
 Non-features
 ------------
-  - File preview
-  - Icon support
+  - Rich feature set
+    - no file previews, no icons
   - Lots of built-in sources
     - currently only `buffers` and `oldfiles` are provided
   - Lots of configuration options
