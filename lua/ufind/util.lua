@@ -50,7 +50,20 @@ end
 
 ---@param ... string
 local function err(...)
-    vim.api.nvim_err_writeln('[ufind] ' .. table.concat({...}, ' '))
+    vim.notify('[ufind] ' .. table.concat({...}, ' '), vim.log.levels.ERROR)
+end
+
+
+---@param ... string
+local function warn(...)
+    vim.notify('[ufind] ' .. table.concat({...}, ' '), vim.log.levels.WARN)
+end
+
+
+---@param msg string
+---@param ... string
+local function warnf(msg, ...)
+    warn(string.format(msg, ...))
 end
 
 
@@ -73,27 +86,29 @@ end
 ---@param cmd string
 ---@param args string[]
 ---@param on_stdout fun(stdoutbuf: string[])
----@param on_exit fun(exit: number, signal: number)?
----@return userdata,number # handle, pid
-local function spawn(cmd, args, on_stdout, on_exit)
+---@return vim.loop.Process?
+local function spawn(cmd, args, on_stdout)
     local uv = vim.loop
     local stdout, stderr = uv.new_pipe(), uv.new_pipe()
     local stdoutbuf, stderrbuf = {}, {}
-    local handle, pid
-    handle, pid = uv.spawn(cmd, {
+    local handle, pid_or_err
+    handle, pid_or_err = uv.spawn(cmd, {
         stdio = {nil, stdout, stderr},
         args = args,
-    }, function(exit_code, signal)  -- on exit
-        if next(stderrbuf) ~= nil then
+    }, function(exit_code)  -- on exit
+        if exit_code > 0 then
             vim.schedule(function()
-                err(table.concat(stderrbuf))
+                warnf('Command exited non-zero: `%s %s`\n%s',
+                    cmd, table.concat(args, ' '), table.concat(stderrbuf))
             end)
-        end
-        if on_exit then
-            on_exit(exit_code, signal)
         end
         handle:close()
     end)
+    if not handle then -- invalid command, bad permissions, etc
+        errf('Failed to spawn: %s (%s)', cmd, pid_or_err)
+        return nil
+    end
+
     stdout:read_start(function(e, chunk)  -- on stdout
         assert(not e, e)
         if chunk then
@@ -107,7 +122,7 @@ local function spawn(cmd, args, on_stdout, on_exit)
             stderrbuf[#stderrbuf+1] = chunk
         end
     end)
-    return handle, pid
+    return handle
 end
 
 
@@ -118,6 +133,8 @@ return {
     schedule_wrap_t = schedule_wrap_t,
     err = err,
     errf = errf,
+    warn = warn,
+    warnf = warnf,
     assert = assert,
     spawn = spawn,
 }
