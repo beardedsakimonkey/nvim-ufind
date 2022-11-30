@@ -88,6 +88,8 @@ local default_config = {
     pattern = '^(.*)$',
     -- Whether to parse ansi escape codes.
     ansi = false,
+    -- Initial filter to use when first opened.
+    initial_filter = '',
     layout = {
         ---@type 'none'|'single'|'double'|'rounded'|'solid'|string[]
         border = 'none',

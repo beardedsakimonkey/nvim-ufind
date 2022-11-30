@@ -46,6 +46,10 @@ function Uf.new(config, num_inputs)
         api.nvim_buf_add_highlight(o.input_bufs[i], -1, 'UfindPrompt', 0, 0, #prompt)
     end
 
+    if config.initial_filter ~= '' then
+        api.nvim_feedkeys(config.initial_filter, 'n', false)
+    end
+
     -- For occlusion of results
     o.matches = {}  -- stores current matches for when we scroll
     o.top = 1  -- line number of the line at the top of the viewport
