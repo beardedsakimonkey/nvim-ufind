@@ -158,8 +158,8 @@ function M.open(source, config)
             end
         else
             api.nvim_buf_set_lines(self.result_buf, 0, -1, true, visible_lines)
-            use_hl_lines()
         end
+        use_hl_lines()
         self:use_hl_multiselect(selected_linenrs)
         self:use_hl_matches()
     end
@@ -334,8 +334,8 @@ function M.open_live(source, config)
             end
         else
             api.nvim_buf_set_lines(self.result_buf, 0, -1, true, visible_lines)
-            use_hl_lines()
         end
+        use_hl_lines()
         self:use_hl_multiselect(selected_linenrs)
     end
 
