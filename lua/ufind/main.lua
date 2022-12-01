@@ -2,6 +2,7 @@ local core = require('ufind.core')
 local util = require('ufind.util')
 local arg = require('ufind.arg')
 local ansi = require('ufind.ansi')
+local highlight = require('ufind.highlight')
 
 local api = vim.api
 local uv = vim.loop
@@ -71,7 +72,7 @@ function M.open(source, config)
     })
     config = vim.tbl_deep_extend('keep', config or {}, default_config)
     if config.ansi then
-        ansi.add_highlights()
+        highlight.setup()
     end
     local pattern, num_captures = arg.inject_empty_captures(config.pattern)
     local uf = core.Uf.new(config, num_captures)
@@ -234,7 +235,7 @@ function M.open_live(source, config)
     })
     config = vim.tbl_deep_extend('keep', config or {}, default_config)
     if config.ansi then
-        ansi.add_highlights()
+        highlight.setup()
     end
 
     local uf = core.Uf.new(config)
