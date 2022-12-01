@@ -71,9 +71,7 @@ function M.open(source, config)
         config = {config, 'table', true},
     })
     config = vim.tbl_deep_extend('keep', config or {}, default_config)
-    if config.ansi then
-        highlight.setup()
-    end
+    highlight.setup(config.ansi)
     local pattern, num_captures = arg.inject_empty_captures(config.pattern)
     local uf = core.Uf.new(config, num_captures)
 
@@ -234,10 +232,7 @@ function M.open_live(source, config)
         config = {config, 'table', true},
     })
     config = vim.tbl_deep_extend('keep', config or {}, default_config)
-    if config.ansi then
-        highlight.setup()
-    end
-
+    highlight.setup(config.ansi)
     local uf = core.Uf.new(config)
 
     function uf:get_selected_lines()
