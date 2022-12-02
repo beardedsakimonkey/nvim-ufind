@@ -111,4 +111,12 @@ function M.spawn(cmd, args, on_stdout, on_exit)
     return handle
 end
 
+---@param val number
+---@param min number
+---@param max number
+---@return number
+function M.clamp(val, min, max)
+    return math.min(max, math.max(min, val))
+end
+
 return M

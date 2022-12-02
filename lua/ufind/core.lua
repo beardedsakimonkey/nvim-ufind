@@ -33,7 +33,7 @@ function Uf.new(config, num_inputs)
     setmetatable(o, {__index = Uf})
 
     num_inputs = num_inputs or 1
-    o.cur_input = 1
+    o.cur_input = util.clamp(config.initial_scope, 1, num_inputs)
     o.input_bufs = {}
 
     -- Create input buffers
@@ -62,7 +62,7 @@ function Uf.new(config, num_inputs)
     o.on_complete = config.on_complete
     o.orig_win = api.nvim_get_current_win()
     o.result_buf = view.create_result_buf()
-    o.input_win, o.result_win = view.create_wins(o.input_bufs[1], o.result_buf, config.layout)
+    o.input_win, o.result_win = view.create_wins(o.input_bufs[o.cur_input], o.result_buf, config.layout)
     o.vimresized_auid = view.handle_vimresized(o.input_win, o.result_win, config.layout)
     o.winclosed_auid = api.nvim_create_autocmd('WinClosed', {callback = function()
         o:quit()

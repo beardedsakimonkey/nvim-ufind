@@ -90,6 +90,8 @@ local default_config = {
     ansi = false,
     -- Initial query to use when first opened.
     initial_query = '',
+    -- Initial scope to use when first opened.
+    initial_scope = 1,
     layout = {
         ---@type 'none'|'single'|'double'|'rounded'|'solid'|string[]
         border = 'none',
