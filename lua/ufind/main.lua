@@ -1,4 +1,4 @@
-local Uf = require('ufind.core').Uf
+local Uf = require('ufind.Uf')
 local util = require('ufind.util')
 local arg = require('ufind.arg')
 local ansi = require('ufind.ansi')

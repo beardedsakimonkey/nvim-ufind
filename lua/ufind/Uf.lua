@@ -295,4 +295,4 @@ function Uf:use_hl_multiselect(selected_linenrs)
     end
 end
 
-return {Uf = Uf}
+return Uf
