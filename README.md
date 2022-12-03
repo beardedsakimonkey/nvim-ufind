@@ -81,8 +81,7 @@ local default_config = {
         end
     end,
     -- Returns custom highlight ranges to highlight the result line.
-    ---@alias UfindHighlightRange {col_start: number, col_end: number, hl_group: string}
-    ---@type fun(line: string): UfindHighlightRange[]?
+    ---@type fun(line: string): {col_start: number, col_end: number, hl_group: string}[]?
     get_highlights = nil,
     -- Lua pattern with capture groups that defines scopes that will be queried individually.
     pattern = '^(.*)$',

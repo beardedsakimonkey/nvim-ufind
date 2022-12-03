@@ -1,4 +1,4 @@
-local core = require('ufind.core')
+local Uf = require('ufind.core').Uf
 local util = require('ufind.util')
 local arg = require('ufind.arg')
 local ansi = require('ufind.ansi')
@@ -24,8 +24,7 @@ local default_config = {
         end
     end,
     -- Returns custom highlight ranges to highlight the result line.
-    ---@alias UfindHighlightRange {col_start: number, col_end: number, hl_group: string}
-    ---@type fun(line: string): UfindHighlightRange[]?
+    ---@type fun(line: string): {col_start: number, col_end: number, hl_group: string}[]?
     get_highlights = nil,
     -- Lua pattern with capture groups that defines scopes that will be queried individually.
     pattern = '^(.*)$',
@@ -75,7 +74,7 @@ function M.open(source, config)
     config = vim.tbl_deep_extend('keep', config or {}, default_config)
     highlight.setup(config.ansi)
     local pattern, num_captures = arg.inject_empty_captures(config.pattern)
-    local uf = core.Uf.new(config, num_captures)
+    local uf = Uf.new(config, num_captures)
 
     -- Note: lines may contain ansi codes
     local lines = type(source) == 'table' and source or {}
@@ -235,7 +234,7 @@ function M.open_live(source, config)
     })
     config = vim.tbl_deep_extend('keep', config or {}, default_config)
     highlight.setup(config.ansi)
-    local uf = core.Uf.new(config)
+    local uf = Uf.new(config)
 
     function uf:get_selected_lines()
         local lines = {}
