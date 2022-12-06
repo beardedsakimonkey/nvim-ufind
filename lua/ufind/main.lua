@@ -108,7 +108,6 @@ function M.open(source, config)
         else
             self.selections[match.index] = true
         end
-        print(self.selections)
         uf:move_cursor(1)
         self:redraw_results()
     end
@@ -289,7 +288,6 @@ function M.open_live(source, config)
         for i, match in ipairs(uf:get_visible_matches()) do
             local hls = config.get_highlights(match)
             for _, hl in ipairs(hls or {}) do
-                print(hl)
                 api.nvim_buf_add_highlight(uf.result_buf, uf.results_ns,
                     hl.hl_group, i-1, hl.col_start, hl.col_end)
             end

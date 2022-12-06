@@ -82,7 +82,7 @@ function M.spawn(cmd, args, on_stdout, on_exit)
         if next(stderrbuf) ~= nil then
             vim.schedule(function()
                 M.warnf('Command `%s %s` wrote to stderr:\n%s',
-                cmd, table.concat(args, ' '), table.concat(stderrbuf))
+                    cmd, table.concat(args, ' '), table.concat(stderrbuf))
             end)
         end
         if on_exit then
@@ -90,7 +90,7 @@ function M.spawn(cmd, args, on_stdout, on_exit)
         end
         handle:close()
     end)
-    if not handle then -- invalid command, bad permissions, etc
+    if not handle then  -- invalid command, bad permissions, etc
         M.errf('Failed to spawn: %s (%s)', cmd, pid_or_err)
         return nil
     end

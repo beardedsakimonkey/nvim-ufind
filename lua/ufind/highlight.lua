@@ -55,7 +55,6 @@ local function setup_ansi()
             end
         end
     end
-
 end
 
 ---Add ufind highlight groups if they don't already exist

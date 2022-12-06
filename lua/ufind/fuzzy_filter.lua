@@ -49,7 +49,6 @@ function M.find_min_subsequence(str, chars)  -- exposed for testing
     end
 end
 
-
 -- TODO: rank differently for non-path results (e.g. grep)
 local function calc_score(positions, str)
     local tail_start = str:find('[^/]+/?$')
@@ -72,7 +71,6 @@ local function calc_score(positions, str)
     end
     return score
 end
-
 
 -- Precondition: has queries
 ---@param queries UfindQuery[]
@@ -126,7 +124,6 @@ local function fuzzy_match(str, queries)
     return positions, calc_score(positions, str)
 end
 
-
 ---@return UfindQuery?
 local function parse_query(query_part)
     local invert, prefix, exact, suffix = false, false, false, false
@@ -163,7 +160,6 @@ local function parse_query(query_part)
         } or nil  -- don't score results if there's no term
 end
 
-
 local function sort_queries(queries)
     table.sort(queries, function(a, b)
         if a.prefix ~= b.prefix then return a.prefix      -- prefix queries come first
@@ -172,7 +168,6 @@ local function sort_queries(queries)
         else return #a.term < #b.term end                 -- then shorter queries
     end)
 end
-
 
 ---@return UfindQuery[][]
 local function parse_queries(raw_queries)
@@ -192,7 +187,6 @@ local function parse_queries(raw_queries)
     end
     return query_sets
 end
-
 
 ---@param raw_queries string[]
 ---@param lines string[]
