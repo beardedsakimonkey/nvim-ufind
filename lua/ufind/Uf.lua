@@ -372,6 +372,10 @@ function Uf:use_hl_lines()
     end
     for i, match in ipairs(self:get_visible_matches()) do
         local hls = self.get_highlights(self.get_line_from_match(match))
+        if not vim.tbl_islist(hls) and not self.warned_get_highlights then
+            self.warned_get_highlights  = true
+            util.warn('config.get_highlights() must return a list')
+        end
         for _, hl in ipairs(hls or {}) do
             api.nvim_buf_add_highlight(self.result_buf, self.results_ns,
             hl.hl_group, i-1, hl.col_start, hl.col_end)
