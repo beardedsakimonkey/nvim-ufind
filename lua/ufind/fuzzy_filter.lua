@@ -191,8 +191,13 @@ end
 ---@param raw_queries string[]
 ---@param lines string[]
 ---@param pattern string
+---@return UfOpenMatch[]
 function M.filter(raw_queries, lines, pattern)
     local query_sets = parse_queries(raw_queries)
+    ---@class UfOpenMatch
+    ---@field index number
+    ---@field positoins number[]
+    ---@field score number[]
     local res = {}
 
     local has_any_query = util.tbl_some(function(query_set)

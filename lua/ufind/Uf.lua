@@ -1,30 +1,33 @@
 local win = require('ufind.win')
 local util = require('ufind.util')
+local ansi = require('ufind.ansi')
 
 local api = vim.api
 
+---@alias UfMatch string|UfOpenMatch
+
 ---@class Ufind
----@field cur_input       number
----@field input_bufs      number[]
----@field on_complete     fun(string, string)
----@field orig_win        number
----@field result_buf      number
----@field input_win       number
----@field result_win      number
----@field vimresized_auid number
----@field winclosed_auid  number
----@field matches         any[]
----@field top             number (1-indexed)
----@field selections      {[number]: boolean}
----@field results_ns      number
----@field virt_ns         number
-local Uf = {
-    ---@return string[]
-    get_selected_lines = function() error('Not implemented') end,
-    redraw_results = function() error('Not implemented') end,
-    toggle_select = function() error('Not implemented') end,
-    toggle_select_all = function() error('Not implemented') end,
-}
+---@field cur_input            number
+---@field input_bufs           number[]
+---@field on_complete          fun(string, string)
+---@field orig_win             number
+---@field result_buf           number
+---@field input_win            number
+---@field result_win           number
+---@field vimresized_auid      number
+---@field winclosed_auid       number
+---@field matches              UfMatch[]
+---@field top                  number (1-indexed)
+---@field selections           {[number]: true}
+---@field results_ns           number
+---@field virt_ns              number
+---@field ansi                 boolean
+---@field get_highlights       fun(string): UfHighlightRange[]
+---@field get_line             fun(self, number): string
+---@field get_line_from_match  fun(UfMatch): string
+---@field gidx                 fun(self, number): number
+---@field is_selected          fun(self, number, UfMatch): boolean
+local Uf = {}
 
 ---@param config     UfindConfig
 ---@param num_inputs number?
@@ -35,6 +38,8 @@ function Uf.new(config, num_inputs)
     num_inputs = num_inputs or 1
     o.cur_input = util.clamp(config.initial_scope, 1, num_inputs)
     o.input_bufs = {}
+    o.ansi = config.ansi
+    o.get_highlights = config.get_highlights
 
     -- Create input buffers
     for _ = 1, num_inputs do
@@ -53,10 +58,12 @@ function Uf.new(config, num_inputs)
     end
 
     -- For occlusion of results
+    ---@type UfMatch[]
     o.matches = {}  -- stores current matches for when we scroll
     o.top = 1  -- line number of the line at the top of the viewport
 
     -- For multiselect
+    ---@type {[number]: true}
     o.selections = {}
 
     o.on_complete = config.on_complete
@@ -210,7 +217,17 @@ function Uf:quit()
 end
 
 function Uf:open_result(cmd)
-    local lines = self:get_selected_lines()
+    local lines = {}
+    if next(self.selections) ~= nil then
+        for idx, _ in pairs(self.selections) do
+            local line = self:get_line(idx)
+            lines[#lines+1] = self.ansi and ansi.strip(line) or line
+        end
+    else
+        local cursor = self:get_cursor()
+        local line = api.nvim_buf_get_lines(self.result_buf, cursor-1, cursor, false)[1]
+        lines[1] = line  -- ansi codes already stripped
+    end
     if next(lines) ~= nil then
         self:quit()  -- cleanup first in case `on_complete` opens another finder
         self.on_complete(cmd, lines)
@@ -260,6 +277,33 @@ function Uf:setup_keymaps(buf, keymaps)
     end
 end
 
+function Uf:toggle_select()
+    local match_idx = self.top + self:get_cursor() - 1
+    if self.matches[match_idx] == nil then  -- cursor is on an empty line
+        return
+    end
+    local idx = self:gidx(match_idx)
+    if self.selections[idx] then
+        self.selections[idx] = nil
+    else
+        self.selections[idx] = true
+    end
+    self:move_cursor(1)
+    self:redraw_results()
+end
+
+function Uf:toggle_select_all()
+    if next(self.selections) then  -- select none
+        self.selections = {}
+    else  -- select all
+        self.selections = {}
+        for i = 1, #self.matches do
+            self.selections[self:gidx(i)] = true
+        end
+    end
+    self:redraw_results()
+end
+
 function Uf:get_visible_matches()
     local visible_matches = {}
     local vp_height = self:get_vp_height()
@@ -270,10 +314,38 @@ function Uf:get_visible_matches()
     return visible_matches
 end
 
+function Uf:redraw_results()
+    api.nvim_buf_clear_namespace(self.result_buf, self.results_ns, 0, -1)
+    local selected_linenrs = {}
+    local visible_lines = {}
+    for i, match in ipairs(self:get_visible_matches()) do
+        if self:is_selected(i, match) then
+            table.insert(selected_linenrs, i)
+        end
+        table.insert(visible_lines, self.get_line_from_match(match))
+    end
+    if self.ansi then
+        local lines_noansi, hls = ansi.parse(visible_lines)
+        api.nvim_buf_set_lines(self.result_buf, 0, -1, true, lines_noansi)
+        -- Note: need to add highlights *after* buf_set_lines
+        for _, hl in ipairs(hls) do
+            api.nvim_buf_add_highlight(self.result_buf, self.results_ns, hl.hl_group,
+                hl.line-1, hl.col_start-1, hl.col_end-1)
+        end
+    else
+        api.nvim_buf_set_lines(self.result_buf, 0, -1, true, visible_lines)
+    end
+    self:use_hl_lines()
+    self:use_hl_multiselect(selected_linenrs)
+    self:use_hl_matches()
+end
+
 function Uf:use_hl_matches()
     for i, match in ipairs(self:get_visible_matches()) do
-        for _, pos in ipairs(match.positions) do
-            api.nvim_buf_add_highlight(self.result_buf, self.results_ns, 'UfindMatch', i-1, pos-1, pos)
+        if match.positions then
+            for _, pos in ipairs(match.positions) do
+                api.nvim_buf_add_highlight(self.result_buf, self.results_ns, 'UfindMatch', i-1, pos-1, pos)
+            end
         end
     end
 end
@@ -290,8 +362,20 @@ end
 
 function Uf:use_hl_multiselect(selected_linenrs)
     for _, linenr in ipairs(selected_linenrs) do
-        api.nvim_buf_add_highlight(self.result_buf, self.results_ns, 'UfindMultiSelect',
-            linenr-1, 0, -1)
+        api.nvim_buf_add_highlight(self.result_buf, self.results_ns, 'UfindMultiSelect', linenr-1, 0, -1)
+    end
+end
+
+function Uf:use_hl_lines()
+    if not self.get_highlights then
+        return
+    end
+    for i, match in ipairs(self:get_visible_matches()) do
+        local hls = self.get_highlights(self.get_line_from_match(match))
+        for _, hl in ipairs(hls or {}) do
+            api.nvim_buf_add_highlight(self.result_buf, self.results_ns,
+            hl.hl_group, i-1, hl.col_start, hl.col_end)
+        end
     end
 end
 

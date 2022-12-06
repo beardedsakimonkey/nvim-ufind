@@ -95,6 +95,7 @@ function M.spawn(cmd, args, on_stdout, on_exit)
         return nil
     end
 
+    ---@diagnostic disable-next-line: undefined-field
     stdout:read_start(function(e, chunk)  -- on stdout
         M.assert(not e, e)
         if chunk then
@@ -102,6 +103,7 @@ function M.spawn(cmd, args, on_stdout, on_exit)
             on_stdout(stdoutbuf)
         end
     end)
+    ---@diagnostic disable-next-line: undefined-field
     stderr:read_start(function(e, chunk)  -- on stderr
         M.assert(not e, e)
         if chunk then
