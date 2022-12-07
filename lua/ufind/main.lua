@@ -89,13 +89,13 @@ function M.open(source, config)
     end
 
     -- match index to global index (the index to `lines`)
-    function uf:gidx(idx)
-        return self.matches[idx].index
+    function uf:gidx(match_idx)
+        return self.matches[match_idx].index
     end
 
     ---@diagnostic disable-next-line: unused-local
     function uf:is_selected(i, match)
-        return not not self.selections[match.index]
+        return self.selections[match.index] or false
     end
 
     local is_loading = false
@@ -118,23 +118,23 @@ function M.open(source, config)
         end
     end
 
-    if type(source) ~= 'table' then
-        local on_lines_throttled = util.schedule_wrap_t(on_lines)
+    if type(source) == 'string' or type(source) == 'function' then
+        local on_lines_t = util.schedule_wrap_t(on_lines)
         local function on_stdout(stdoutbuf)
             lines = vim.split(table.concat(stdoutbuf), '\n', {trimempty = true})
             local is_subs_chunk = #stdoutbuf > 1
-            on_lines_throttled(is_subs_chunk)
+            on_lines_t(is_subs_chunk)
+        end
+        is_loading = true
+        local function on_exit()
+            is_loading = false
+            on_lines_t(true)  -- re-render virt text without loading indicator
         end
         local cmd, args
         if type(source) == 'string' then
             cmd, args = arg.split_cmd(source)
         else
             cmd, args = source()
-        end
-        is_loading = true
-        local function on_exit()
-            is_loading = false
-            on_lines_throttled(true)  -- re-render virt text without loading indicator
         end
         local handle = util.spawn(cmd, args or {}, on_stdout, on_exit)
 
@@ -186,23 +186,8 @@ function M.open_live(source, config)
 
     ---@diagnostic disable-next-line: unused-local
     function uf:is_selected(i, match)
-        return not not self.selections[self.top + i - 1]
+        return self.selections[self.top + i - 1] or false
     end
-
-    local handle
-
-    local function kill_prev()
-        if handle and handle:is_active() then
-            handle:kill(uv.constants.SIGTERM)
-            -- Don't close the handle; that'll happen in on_exit
-        end
-    end
-
-    api.nvim_create_autocmd('BufUnload', {
-        callback = kill_prev,
-        buffer = uf.input_buf,
-        once = true,  -- for some reason, BufUnload fires twice otherwise
-    })
 
     local is_loading = true
 
@@ -219,6 +204,17 @@ function M.open_live(source, config)
             uf:redraw_results()
         end
     end)
+
+    ---@type vim.loop.Process?
+    local handle
+
+    local function kill_prev()
+        if handle and handle:is_active() then
+            ---@diagnostic disable-next-line: undefined-field
+            handle:kill(uv.constants.SIGTERM)
+            -- Don't close the handle; that'll happen in on_exit
+        end
+    end
 
     local function on_lines()
         uf:move_cursor(-math.huge)  -- move cursor to top
@@ -243,6 +239,12 @@ function M.open_live(source, config)
         is_loading = true
         handle = util.spawn(cmd, args or {}, on_stdout, on_exit)
     end
+
+    api.nvim_create_autocmd('BufUnload', {
+        callback = kill_prev,
+        buffer = uf.input_buf,
+        once = true,  -- for some reason, BufUnload fires twice otherwise
+    })
 
     api.nvim_buf_attach(uf.input_bufs[1], false, {on_lines = on_lines})
     vim.cmd('startinsert')

@@ -297,8 +297,8 @@ function Uf:toggle_select_all()
         self.selections = {}
     else  -- select all
         self.selections = {}
-        for i = 1, #self.matches do
-            self.selections[self:gidx(i)] = true
+        for match_idx = 1, #self.matches do
+            self.selections[self:gidx(match_idx)] = true
         end
     end
     self:redraw_results()

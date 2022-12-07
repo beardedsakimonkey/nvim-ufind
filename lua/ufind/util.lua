@@ -94,7 +94,6 @@ function M.spawn(cmd, args, on_stdout, on_exit)
         M.errf('Failed to spawn: %s (%s)', cmd, pid_or_err)
         return nil
     end
-
     ---@diagnostic disable-next-line: undefined-field
     stdout:read_start(function(e, chunk)  -- on stdout
         M.assert(not e, e)
