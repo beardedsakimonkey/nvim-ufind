@@ -67,7 +67,7 @@ end
 ---@param args      string[]
 ---@param on_stdout fun(stdoutbuf: string[])
 ---@param on_exit   fun(stdoutbuf: string[])?
----@return vim.loop.Process?
+---@return fun()?
 function M.spawn(cmd, args, on_stdout, on_exit)
     local uv = vim.loop
     local stdout, stderr = uv.new_pipe(), uv.new_pipe()
@@ -109,7 +109,21 @@ function M.spawn(cmd, args, on_stdout, on_exit)
             stderrbuf[#stderrbuf+1] = chunk
         end
     end)
-    return handle
+    local function kill_job()
+        -- I've no idea why, but this is needed to avoid showing stale results
+        stdoutbuf = {}
+        stderrbuf = {}
+        -- these don't seem necessary, but..
+        stdout:read_stop() stdout:close()  ---@diagnostic disable-line: undefined-field
+        stderr:read_stop() stderr:close()  ---@diagnostic disable-line: undefined-field
+
+        if handle and handle:is_active() then
+            ---@diagnostic disable-next-line: undefined-field
+            handle:kill(uv.constants.SIGTERM)
+            -- Don't close the handle; that'll happen in on_exit
+        end
+    end
+    return kill_job
 end
 
 ---@param val number

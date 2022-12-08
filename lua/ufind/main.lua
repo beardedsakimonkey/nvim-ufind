@@ -5,7 +5,6 @@ local ansi = require('ufind.ansi')
 local highlight = require('ufind.highlight')
 
 local api = vim.api
-local uv = vim.loop
 
 local M = {}
 
@@ -136,14 +135,11 @@ function M.open(source, config)
         else
             cmd, args = source()
         end
-        local handle = util.spawn(cmd, args or {}, on_stdout, on_exit)
+        local kill_job = util.spawn(cmd, args or {}, on_stdout, on_exit)
 
         api.nvim_create_autocmd('BufUnload', {
             callback = function()
-                if handle and handle:is_active() then
-                    ---@diagnostic disable-next-line: undefined-field
-                    handle:kill(uv.constants.SIGTERM)
-                end
+                if kill_job then kill_job() end
             end,
             buffer = uf.input_buf,
             once = true,  -- for some reason, BufUnload fires twice otherwise
@@ -189,36 +185,32 @@ function M.open_live(source, config)
         return self.selections[self.top + i - 1] or false
     end
 
-    local is_loading = true
+    local exited = false  -- current job has exited
+    local has_drawn = false  -- current job has redrawn at least once
 
-    local redraw = util.schedule_wrap_t(function(stdoutbuf)
+    local sched_redraw = util.schedule_wrap_t(function(stdoutbuf)
         if not api.nvim_buf_is_valid(uf.result_buf) then  -- window has been closed
             return
         end
         local lines = vim.split(table.concat(stdoutbuf), '\n', {trimempty = true})
         uf.matches = lines  -- store matches for when we scroll
-        uf:use_virt_text(tostring(#lines) .. (is_loading and '…' or ''))
-        -- Perf: if we're redrawing from a subsequent chunk of stdout (ie not the initial chunk) and
-        -- the viewport is already full with lines, avoid redrawing.
-        if not (#stdoutbuf > 1 and api.nvim_buf_line_count(uf.result_buf) == uf:get_vp_height()) then
+        uf:use_virt_text(tostring(#lines) .. (exited and '' or '…'))
+        -- Perf: if the viewport is already full with lines, and we've already redrawn at least once
+        -- since the last spawn, avoid redrawing.
+        -- Note that we can't check `#stdoutbuf > 1` do determine if we've already redrawn because
+        -- this function is scheduled, so the first redraw might not be for the first stdout chunk.
+        local is_vp_full = api.nvim_buf_line_count(uf.result_buf) == uf:get_vp_height()
+        if not (is_vp_full and has_drawn) then
             uf:redraw_results()
+            has_drawn = true
         end
     end)
 
-    ---@type vim.loop.Process?
-    local handle
-
-    local function kill_prev()
-        if handle and handle:is_active() then
-            ---@diagnostic disable-next-line: undefined-field
-            handle:kill(uv.constants.SIGTERM)
-            -- Don't close the handle; that'll happen in on_exit
-        end
-    end
+    local kill_job
 
     local function on_lines()
         uf:move_cursor(-math.huge)  -- move cursor to top
-        kill_prev()  -- kill previous job if active
+        if kill_job then kill_job() end  -- kill previous job if active
         uf.selections = {}  -- reset multiselections
         local query = uf.get_query(uf.input_bufs[1])
         local cmd, args
@@ -228,20 +220,23 @@ function M.open_live(source, config)
         else
             cmd, args = source(query)
         end
-        redraw({})  -- clear results in case of no stdout
+        sched_redraw({})  -- clear results in case of no stdout
         local function on_stdout(stdoutbuf)
-            redraw(stdoutbuf)
+            sched_redraw(stdoutbuf)
         end
         local function on_exit(stdoutbuf)
-            is_loading = false
-            redraw(stdoutbuf)  -- re-render virt text without loading indicator
+            exited = true
+            sched_redraw(stdoutbuf)  -- re-render virt text without loading indicator
         end
-        is_loading = true
-        handle = util.spawn(cmd, args or {}, on_stdout, on_exit)
+        exited = false
+        has_drawn = false
+        kill_job = util.spawn(cmd, args or {}, on_stdout, on_exit)
     end
 
     api.nvim_create_autocmd('BufUnload', {
-        callback = kill_prev,
+        callback = function()
+            if kill_job then kill_job() end
+        end,
         buffer = uf.input_buf,
         once = true,  -- for some reason, BufUnload fires twice otherwise
     })
