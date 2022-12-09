@@ -1,7 +1,6 @@
 --[[
      Helper functions for preprocessing user-provided arguments.
 --]]
-
 local util = require('ufind.util')
 
 local M = {}

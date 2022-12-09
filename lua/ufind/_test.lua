@@ -1,7 +1,6 @@
 --[[
      Run these tests with `:so`
 --]]
-
 package.loaded['ufind.query'] = nil
 package.loaded['ufind.arg'] = nil
 package.loaded['ufind.ansi'] = nil

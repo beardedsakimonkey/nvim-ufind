@@ -117,7 +117,7 @@ function Uf:move_cursor(offset)
     local cursor_abs = self.top + cursor_rel - 1
 
     local offset_clamped = offset
-    -- Clamp offset such that 1 <= cursor_abs+offset <= last
+    -- Clamp offset such that 1 <= cursor_abs + offset <= last
     if cursor_abs + offset < 1 then
         offset_clamped = -cursor_abs + 1
     elseif cursor_abs + offset > last then
@@ -132,10 +132,9 @@ function Uf:move_cursor(offset)
 
     -- Cursor is outside of top bound
     if adj_cursor < 1 then
-        -- Scroll viewport up
-        --[[   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-               Scrolling up 2 lines when the cursor is at the top
-               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        --[[ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+             Ex: Scrolling up 2 lines when the cursor is at the top
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
                          ------- 1 ------- --> cursor_abs(4) + offset(-2)
                                  ▲
@@ -147,10 +146,11 @@ function Uf:move_cursor(offset)
                         |                 |
                         +-----------------+
 
-             We subtract 1 from adj_cursor because cursor_rel is 1-indexed
+             We subtract 1 from adj_cursor because cursor_rel is 1-indexed.
              top = top(3) + adj_cursor(-1) - 1
              top = 1
         --]]
+        -- Move viewport up
         self.top = self.top + adj_cursor - 1
         -- Set cursor at viewport top
         api.nvim_win_set_cursor(self.result_win, {1, 0})
@@ -158,7 +158,7 @@ function Uf:move_cursor(offset)
     end
     -- Cursor is outside of bottom bound
     if adj_cursor > vp_height then
-        -- Scroll viewport down
+        -- Move viewport down
         self.top = self.top + adj_cursor - vp_height
         -- Set cursor at viewport bottom
         api.nvim_win_set_cursor(self.result_win, {vp_height, 0})
@@ -330,7 +330,7 @@ function Uf:redraw_results()
         -- Note: need to add highlights *after* buf_set_lines
         for _, hl in ipairs(hls) do
             api.nvim_buf_add_highlight(self.result_buf, self.results_ns, hl.hl_group,
-                hl.line-1, hl.col_start-1, hl.col_end-1)
+                hl.linenr-1, hl.col_start-1, hl.col_end-1)
         end
     else
         api.nvim_buf_set_lines(self.result_buf, 0, -1, true, visible_lines)
