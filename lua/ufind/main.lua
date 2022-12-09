@@ -3,7 +3,6 @@ local util = require('ufind.util')
 local arg = require('ufind.arg')
 local ansi = require('ufind.ansi')
 local highlight = require('ufind.highlight')
-local filter = require('ufind.fuzzy_filter').filter
 
 local api = vim.api
 
@@ -104,13 +103,13 @@ function M.open(source, config)
         end
         local lines_noansi = config.ansi and vim.tbl_map(ansi.strip, lines) or lines
         -- TODO: we don't need to refilter everything on every stdout
-        local matches = filter(uf:get_queries(), lines_noansi, pattern)
+        local matches = require'ufind.query'.match(uf:get_queries(), lines_noansi, pattern)
         uf.matches = matches  -- store matches for when we scroll
         uf:move_cursor(-math.huge)  -- move cursor to top
-        uf:use_virt_text(#matches .. ' / ' .. #lines .. (exited and '' or '…'))
+        uf:set_virt_text(#matches .. ' / ' .. #lines .. (exited and '' or '…'))
         -- Perf: if the viewport is already full with lines, and we're redrawing from stdout/exit of
-        -- a command, avoid redrawing.
-        -- If the user has queried before the command completed, we still redraw via `on_lines`.
+        -- a command, avoid redrawing. (if the user has queried before the command completed, we
+        -- still redraw via `on_lines`)
         local is_vp_full = api.nvim_buf_line_count(uf.result_buf) == uf:get_vp_height()
         if not (is_vp_full and is_cmd) then
             uf:redraw_results()
@@ -196,7 +195,7 @@ function M.open_live(source, config)
         end
         local lines = vim.split(table.concat(stdoutbuf), '\n', {trimempty = true})
         uf.matches = lines  -- store matches for when we scroll
-        uf:use_virt_text(tostring(#lines) .. (exited and '' or '…'))
+        uf:set_virt_text(tostring(#lines) .. (exited and '' or '…'))
         -- Perf: if the viewport is already full with lines, and we've already redrawn at least once
         -- since the last spawn, avoid redrawing.
         -- Note that we can't check `#stdoutbuf > 1` do determine if we've already redrawn because

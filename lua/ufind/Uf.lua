@@ -57,7 +57,7 @@ function Uf.new(config, num_inputs)
         api.nvim_feedkeys(config.initial_query, 'n', false)
     end
 
-    -- For occlusion of results
+    -- For occlusion-culling results
     ---@type UfMatch[]
     o.matches = {}  -- stores current matches for when we scroll
     o.top = 1  -- line number of the line at the top of the viewport
@@ -335,12 +335,12 @@ function Uf:redraw_results()
     else
         api.nvim_buf_set_lines(self.result_buf, 0, -1, true, visible_lines)
     end
-    self:use_hl_lines()
-    self:use_hl_multiselect(selected_linenrs)
-    self:use_hl_matches()
+    self:hl_lines()
+    self:hl_multiselect(selected_linenrs)
+    self:hl_matches()
 end
 
-function Uf:use_hl_matches()
+function Uf:hl_matches()
     for i, match in ipairs(self:get_visible_matches()) do
         if match.positions then
             for _, pos in ipairs(match.positions) do
@@ -350,7 +350,7 @@ function Uf:use_hl_matches()
     end
 end
 
-function Uf:use_virt_text(text)
+function Uf:set_virt_text(text)
     for _, buf in ipairs(self.input_bufs) do
         api.nvim_buf_clear_namespace(buf, self.virt_ns, 0, -1)
         api.nvim_buf_set_extmark(buf, self.virt_ns, 0, -1, {
@@ -360,13 +360,13 @@ function Uf:use_virt_text(text)
     end
 end
 
-function Uf:use_hl_multiselect(selected_linenrs)
+function Uf:hl_multiselect(selected_linenrs)
     for _, linenr in ipairs(selected_linenrs) do
         api.nvim_buf_add_highlight(self.result_buf, self.results_ns, 'UfindMultiSelect', linenr-1, 0, -1)
     end
 end
 
-function Uf:use_hl_lines()
+function Uf:hl_lines()
     if not self.get_highlights then
         return
     end

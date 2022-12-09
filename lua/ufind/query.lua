@@ -192,7 +192,7 @@ end
 ---@param lines string[]
 ---@param pattern string
 ---@return UfOpenMatch[]
-function M.filter(raw_queries, lines, pattern)
+function M.match(raw_queries, lines, pattern)
     local query_sets = parse_queries(raw_queries)
     ---@class UfOpenMatch
     ---@field index number
