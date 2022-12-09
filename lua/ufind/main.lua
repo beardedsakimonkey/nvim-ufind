@@ -3,6 +3,7 @@ local util = require('ufind.util')
 local arg = require('ufind.arg')
 local ansi = require('ufind.ansi')
 local highlight = require('ufind.highlight')
+local filter = require('ufind.fuzzy_filter').filter
 
 local api = vim.api
 
@@ -97,37 +98,34 @@ function M.open(source, config)
         return self.selections[match.index] or false
     end
 
-    local is_loading = false
-
-    local function on_lines(is_subs_chunk)
+    local function redraw(exited, is_cmd)
         if not api.nvim_buf_is_valid(uf.result_buf) then  -- window has been closed
             return
         end
-        -- Strip ansi for filtering
         local lines_noansi = config.ansi and vim.tbl_map(ansi.strip, lines) or lines
         -- TODO: we don't need to refilter everything on every stdout
-        local matches = require('ufind.fuzzy_filter').filter(uf:get_queries(), lines_noansi, pattern)
+        local matches = filter(uf:get_queries(), lines_noansi, pattern)
         uf.matches = matches  -- store matches for when we scroll
         uf:move_cursor(-math.huge)  -- move cursor to top
-        uf:use_virt_text(#matches .. ' / ' .. #lines .. (is_loading and '…' or ''))
-        -- Perf: if we're redrawing from a subsequent chunk of stdout (ie not the initial chunk) and
-        -- the viewport is already full with lines, avoid redrawing.
-        if not (is_subs_chunk and api.nvim_buf_line_count(uf.result_buf) == uf:get_vp_height()) then
+        uf:use_virt_text(#matches .. ' / ' .. #lines .. (exited and '' or '…'))
+        -- Perf: if the viewport is already full with lines, and we're redrawing from stdout/exit of
+        -- a command, avoid redrawing.
+        -- If the user has queried before the command completed, we still redraw via `on_lines`.
+        local is_vp_full = api.nvim_buf_line_count(uf.result_buf) == uf:get_vp_height()
+        if not (is_vp_full and is_cmd) then
             uf:redraw_results()
         end
     end
 
     if type(source) == 'string' or type(source) == 'function' then
-        local on_lines_t = util.schedule_wrap_t(on_lines)
+        local sched_redraw = util.schedule_wrap_t(redraw)
         local function on_stdout(stdoutbuf)
             lines = vim.split(table.concat(stdoutbuf), '\n', {trimempty = true})
-            local is_subs_chunk = #stdoutbuf > 1
-            on_lines_t(is_subs_chunk)
+            sched_redraw(--[[exited]]false, --[[is_cmd]]true)
         end
-        is_loading = true
         local function on_exit()
-            is_loading = false
-            on_lines_t(true)  -- re-render virt text without loading indicator
+            -- redraw virt text without loading indicator
+            sched_redraw(--[[exited]]true, --[[is_cmd]]true)
         end
         local cmd, args
         if type(source) == 'string' then
@@ -148,7 +146,11 @@ function M.open(source, config)
 
     -- `on_lines` can be called in various contexts wherein textlock could prevent changing buffer
     -- contents and window layout. Use `schedule` to defer such operations to the main loop.
-    local opts = { on_lines = vim.schedule_wrap(function() on_lines(false) end) }
+    local opts = {
+        on_lines = vim.schedule_wrap(function()
+            redraw(--[[exited]]true, --[[is_cmd]]false)
+        end)
+    }
     for _, buf in ipairs(uf.input_bufs) do
         -- Note: `on_lines` gets called immediately because of setting the prompt
         api.nvim_buf_attach(buf, false, opts)
@@ -226,7 +228,7 @@ function M.open_live(source, config)
         end
         local function on_exit(stdoutbuf)
             exited = true
-            sched_redraw(stdoutbuf)  -- re-render virt text without loading indicator
+            sched_redraw(stdoutbuf)  -- redraw virt text without loading indicator
         end
         exited = false
         has_drawn = false
