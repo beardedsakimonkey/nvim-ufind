@@ -97,7 +97,9 @@ function M.open(source, config)
         return self.selections[match.index] or false
     end
 
-    local function redraw(exited, is_cmd)
+    local exited = false  -- job has exited
+
+    local function redraw(is_cmd)
         if not api.nvim_buf_is_valid(uf.result_buf) then  -- window has been closed
             return
         end
@@ -120,11 +122,11 @@ function M.open(source, config)
         local sched_redraw = util.schedule_wrap_t(redraw)
         local function on_stdout(stdoutbuf)
             lines = vim.split(table.concat(stdoutbuf), '\n', {trimempty = true})
-            sched_redraw(--[[exited]]false, --[[is_cmd]]true)
+            sched_redraw(true)
         end
         local function on_exit()
-            -- redraw virt text without loading indicator
-            sched_redraw(--[[exited]]true, --[[is_cmd]]true)
+            exited = true
+            sched_redraw(true) -- redraw virt text without loading indicator
         end
         local cmd, args
         if type(source) == 'string' then
@@ -141,15 +143,13 @@ function M.open(source, config)
             buffer = uf.input_buf,
             once = true,  -- for some reason, BufUnload fires twice otherwise
         })
+    else
+        exited = true
     end
 
     -- `on_lines` can be called in various contexts wherein textlock could prevent changing buffer
     -- contents and window layout. Use `schedule` to defer such operations to the main loop.
-    local opts = {
-        on_lines = vim.schedule_wrap(function()
-            redraw(--[[exited]]true, --[[is_cmd]]false)
-        end)
-    }
+    local opts = { on_lines = vim.schedule_wrap(function() redraw(false) end) }
     for _, buf in ipairs(uf.input_bufs) do
         -- Note: `on_lines` gets called immediately because of setting the prompt
         api.nvim_buf_attach(buf, false, opts)
