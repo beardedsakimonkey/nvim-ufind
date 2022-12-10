@@ -54,13 +54,14 @@ function M.create_wins(input_buf, result_buf, cfg)
 end
 
 ---@param cfg UfindLayout
-function M.handle_vimresized(input_win, result_win, cfg)
+function M.handle_vimresized(input_win, result_win, cfg, cb)
     local function relayout()
         local input_win_layout, result_win_layout = get_win_layouts(cfg)
         api.nvim_win_set_config(input_win, input_win_layout)
         -- Note: This disables 'cursorline' due to style = 'minimal' window config
         api.nvim_win_set_config(result_win, result_win_layout)
         vim.wo[result_win].cursorline = true
+        cb()
     end
     return api.nvim_create_autocmd('VimResized', {callback = relayout})
 end

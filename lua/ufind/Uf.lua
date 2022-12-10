@@ -70,7 +70,7 @@ function Uf.new(config, num_inputs)
     o.orig_win = api.nvim_get_current_win()
     o.result_buf = win.create_result_buf()
     o.input_win, o.result_win = win.create_wins(o.input_bufs[o.cur_input], o.result_buf, config.layout)
-    o.vimresized_auid = win.handle_vimresized(o.input_win, o.result_win, config.layout)
+    o.vimresized_auid = win.handle_vimresized(o.input_win, o.result_win, config.layout, function() o:redraw_results() end)
     o.winclosed_auid = api.nvim_create_autocmd('WinClosed', {callback = function() o:quit() end})
 
     o.results_ns = api.nvim_create_namespace('ufind/results')  -- for all highlights in the results window
