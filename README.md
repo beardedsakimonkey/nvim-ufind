@@ -47,9 +47,8 @@ finder. In rare cases when you want more control over the argument breakdown of 
 instead pass a function that returns the command name and an array of arguments (e.g. `function()
 return 'rg', {'--vimgrep', 'foo'} end`).
 
-Results in the finder window can be filtered using an [fzf-like
-syntax](https://github.com/junegunn/fzf/#search-syntax). (Note: the OR operator is not yet
-supported).
+Results in the finder window can be filtered using the same syntax as
+[fzf](https://github.com/junegunn/fzf/#search-syntax). (Note: the OR operator is not yet supported).
 
 ### `open_live(source [, config])`
 
@@ -62,11 +61,10 @@ parameter (e.g. `function(query) return 'rg', {'--vimgrep', '--', query} end`).
 ### `config`
 
 Both `open()` and `open_live()` accept an optional `config` argument. They are identical except that
-`pattern` is not supported by `open_live()`. The passed in `config` will be deep-merged with the
+`scopes` is not supported by `open_live()`. The passed in `config` will be deep-merged with the
 default config:
 
 ```lua
----@class UfindConfig
 local default_config = {
     -- Called when selecting an item to open.
     ---@type fun(cmd: 'edit'|'split'|'vsplit'|'tabedit', lines: string[])
@@ -84,7 +82,7 @@ local default_config = {
     ---@type fun(line: string): {col_start: number, col_end: number, hl_group: string}[]?
     get_highlights = nil,
     -- Lua pattern with capture groups that defines scopes that will be queried individually.
-    pattern = '^(.*)$',
+    scopes = '^(.*)$',
     -- Whether to parse ansi escape codes.
     ansi = false,
     -- Initial query to use when first opened.
@@ -126,11 +124,26 @@ Example configuration
 local ufind = require'ufind'
 
 local function cfg(t)
-    return vim.tbl_deep_extend('keep', t or {}, {
+    return vim.tbl_deep_extend('keep', t, {
         layout = { border = 'single' },
         keymaps = { open_vsplit = '<C-l>' },
     })
 end
+
+-- Buffers
+vim.keymap.set('n', '<space>b', function()
+    ufind.open(require'ufind.source.buffers'(), cfg{})
+end)
+
+-- Oldfiles
+vim.keymap.set('n', '<space>o', function()
+    ufind.open(require'ufind.source.oldfiles'(), cfg{})
+end)
+
+-- Live find (command is rerun every time query is changed)
+vim.keymap.set('n', '<space>f', function()
+    ufind.open_live('fd --color=always --type=file --', cfg{ansi = true})
+end)
 
 local function on_complete_grep(cmd, lines)
     for i, line in ipairs(lines) do
@@ -138,7 +151,7 @@ local function on_complete_grep(cmd, lines)
         if found then
             if i == #lines then
                 vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(fname) .. '|' .. linenr)
-            else  -- create the buffer
+            else  -- create a buffer
                 local buf = vim.fn.bufnr(fname, true)
                 vim.bo[buf].buflisted = true
             end
@@ -147,41 +160,21 @@ local function on_complete_grep(cmd, lines)
 end
 
 -- Grep
-local function grep(query)
-    ufind.open('rg --vimgrep --no-column --fixed-strings --color=ansi -- ' .. query, cfg{
-        pattern = '^([^:]-):%d+:(.*)$',  -- enables scoped querying
+vim.api.nvim_create_user_command('Grep', function(o)
+    ufind.open('rg --vimgrep --no-column --fixed-strings --color=ansi -- ' .. o.args, cfg{
+        scopes = '^([^:]-):%d+:(.*)$',
         ansi = true,
         on_complete = on_complete_grep,
     })
-end
-vim.api.nvim_create_user_command('Grep', function(o) grep(o.args) end, {nargs = '+'})
+end, {nargs = '+'})
 
--- Live grep (command is rerun every time query is changed)
-local function live_grep()
+-- Live grep
+vim.keymap.set('n', '<space>g', function()
     ufind.open_live('rg --vimgrep --no-column --fixed-strings --color=ansi -- ', cfg{
         ansi = true,
         on_complete = on_complete_grep,
     })
-end
-vim.keymap.set('n', '<space>g', live_grep)
-
--- Live find
-local function find()
-    ufind.open_live('fd --color=always --type=file --', cfg{ansi = true})
-end
-vim.keymap.set('n', '<space>f', find)
-
--- Buffers (using a built-in helper)
-local function buffers()
-    ufind.open(require'ufind.source.buffers'(), cfg{})
-end
-vim.keymap.set('n', '<space>b', buffers)
-
--- Oldfiles
-local function oldfiles()
-    ufind.open(require'ufind.source.oldfiles'(), cfg{})
-end
-vim.keymap.set('n', '<space>o', oldfiles)
+end)
 ```
 
 Similar plugins

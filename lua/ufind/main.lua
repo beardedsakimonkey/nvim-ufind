@@ -27,7 +27,7 @@ local default_config = {
     ---@type fun(line: string): UfHighlightRange[]?
     get_highlights = nil,
     -- Lua pattern with capture groups that defines scopes that will be queried individually.
-    pattern = '^(.*)$',
+    scopes = '^(.*)$',
     -- Whether to parse ansi escape codes.
     ansi = false,
     -- Initial query to use when first opened.
@@ -73,7 +73,7 @@ function M.open(source, config)
     })
     config = vim.tbl_deep_extend('keep', config or {}, default_config)
     highlight.setup(config.ansi)
-    local pattern, num_captures = arg.inject_empty_captures(config.pattern)
+    local scopes, num_captures = arg.inject_empty_captures(config.scopes)
     local uf = Uf.new(config, num_captures)
 
     -- Note: lines may contain ansi codes
@@ -105,7 +105,7 @@ function M.open(source, config)
         end
         local lines_noansi = config.ansi and vim.tbl_map(ansi.strip, lines) or lines
         -- TODO: we don't need to refilter everything on every stdout
-        local matches = require'ufind.query'.match(uf:get_queries(), lines_noansi, pattern)
+        local matches = require'ufind.query'.match(uf:get_queries(), lines_noansi, scopes)
         uf.matches = matches  -- store matches for when we scroll
         uf:move_cursor(-math.huge)  -- move cursor to top
         uf:set_virt_text(#matches .. ' / ' .. #lines .. (exited and '' or '…'))

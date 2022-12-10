@@ -27,15 +27,15 @@ function M.split_cmd_aux(cmd)  -- exposed for testing
     end
     local si = nil  -- start index
     local sq = nil  -- start quote
-    local q = nil  -- quote type
+    local qc = nil  -- quote char
     local ret = {}
     for i = 1, #cmd do
         local c = cmd:sub(i, i)
         if sq ~= nil then
-            if c == q then
+            if c == qc then
                 ret[#ret+1] = cmd:sub(sq, i-1)
                 sq = nil
-                q = nil
+                qc = nil
                 si = nil
             end
         else
@@ -45,7 +45,7 @@ function M.split_cmd_aux(cmd)  -- exposed for testing
                     si = nil
                 end
             elseif c == '"' or c == "'" then
-                q = c
+                qc = c
                 sq = i+1
             else  -- non-whitespace/quote
                 if si == nil then
