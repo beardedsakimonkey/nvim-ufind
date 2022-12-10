@@ -1,8 +1,9 @@
 ufind
 =====
 
-**Work in progress**. The plugin should work bug-free, but expect breaking changes as the API is
-being fleshed out.
+A simple finder plugin for neovim.
+
+https://user-images.githubusercontent.com/54521218/206877185-454b8174-b16f-41c2-9cb8-5d389f8923d5.mov
 
 Features
 --------
