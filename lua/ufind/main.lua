@@ -97,7 +97,7 @@ function M.open(source, config)
         return self.selections[match.index] or false
     end
 
-    local exited = false  -- job has exited
+    local done = false  -- job has exited
 
     local function redraw(is_cmd)
         if not api.nvim_buf_is_valid(uf.result_buf) then  -- window has been closed
@@ -108,7 +108,7 @@ function M.open(source, config)
         local matches = require'ufind.query'.match(uf:get_queries(), lines_noansi, scopes)
         uf.matches = matches  -- store matches for when we scroll
         uf:move_cursor(-math.huge)  -- move cursor to top
-        uf:set_virt_text(#matches .. ' / ' .. #lines .. (exited and '' or '…'))
+        uf:set_virt_text(#matches .. ' / ' .. #lines .. (done and '' or '…'))
         -- Perf: if the viewport is already full with lines, and we're redrawing from stdout/exit of
         -- a command, avoid redrawing. (if the user has queried before the command completed, we
         -- still redraw via `on_lines`)
@@ -125,7 +125,7 @@ function M.open(source, config)
             sched_redraw(true)
         end
         local function on_exit()
-            exited = true
+            done = true
             sched_redraw(true) -- redraw virt text without loading indicator
         end
         local cmd, args
@@ -144,7 +144,7 @@ function M.open(source, config)
             once = true,  -- for some reason, BufUnload fires twice otherwise
         })
     else
-        exited = true
+        done = true
     end
 
     -- `on_lines` can be called in various contexts wherein textlock could prevent changing buffer
@@ -186,7 +186,7 @@ function M.open_live(source, config)
         return self.selections[self.top + i - 1] or false
     end
 
-    local exited = false  -- current job has exited
+    local done = false  -- current job has exited
     local has_drawn = false  -- current job has redrawn at least once
 
     local sched_redraw = util.schedule_wrap_t(function(stdoutbuf)
@@ -195,7 +195,7 @@ function M.open_live(source, config)
         end
         local lines = vim.split(table.concat(stdoutbuf), '\n', {trimempty = true})
         uf.matches = lines  -- store matches for when we scroll
-        uf:set_virt_text(tostring(#lines) .. (exited and '' or '…'))
+        uf:set_virt_text(#lines .. (done and '' or '…'))
         -- Perf: if the viewport is already full with lines, and we've already redrawn at least once
         -- since the last spawn, avoid redrawing.
         -- Note that we can't check `#stdoutbuf > 1` do determine if we've already redrawn because
@@ -223,13 +223,15 @@ function M.open_live(source, config)
         end
         sched_redraw({})  -- clear results in case of no stdout
         local function on_stdout(stdoutbuf)
+            -- Note: when changing the query, on_exit fires after on_lines, so we can't just set
+            -- `done = false` in on_lines.
+            done = false
             sched_redraw(stdoutbuf)
         end
         local function on_exit(stdoutbuf)
-            exited = true
+            done = true
             sched_redraw(stdoutbuf)  -- redraw virt text without loading indicator
         end
-        exited = false
         has_drawn = false
         kill_job = util.spawn(cmd, args or {}, on_stdout, on_exit)
     end
