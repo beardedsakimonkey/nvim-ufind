@@ -4,6 +4,8 @@ local M = {}
 
 ---Find the minimum subsequence in `str` containing `chars` (in order) using a
 ---sliding window algorithm.
+---@param str   string
+---@param chars string
 function M.find_min_subsequence(str, chars)  -- exposed for testing
     local s, c = 1, 1
     local seq = {
@@ -49,17 +51,18 @@ function M.find_min_subsequence(str, chars)  -- exposed for testing
     end
 end
 
--- TODO: rank differently for non-path results (e.g. grep)
+---@param positions number[]
+---@param str string
 local function calc_score(positions, str)
+    table.sort(positions)  -- for calculating consecutive char bonus
     local tail_start = str:find('[^/]+/?$')
     local tail_streak = tail_start
     local score = 0
     local prev_pos = -1
     for _, pos in ipairs(positions) do
         local consec = pos == prev_pos + 1
-        local tail = tail_start and pos >= tail_start
+        local tail = tail_start and pos >= tail_start or false
         local word_start = pos == 0 or (pos > 1 and str:sub(pos-1, pos-1) == '/')
-
         if consec     then score = score + 1 end  -- consecutive char
         if tail       then score = score + 1 end  -- path tail
         if word_start then score = score + 1 end  -- start of word
@@ -74,6 +77,7 @@ end
 
 -- Precondition: has queries
 ---@param queries UfindQuery[]
+---@return number[]?
 local function fuzzy_match(str, queries)
     if not str or #str == 0 or vim.tbl_isempty(queries) then return nil end
     str = str:lower()
@@ -119,18 +123,16 @@ local function fuzzy_match(str, queries)
             end
         end
     end
-    -- Invariant: none of the matches failed
-    table.sort(positions)  -- for calculating consecutive char bonus
-    return positions, calc_score(positions, str)
+    -- None of the matches failed
+    return positions
 end
 
 ---@return UfindQuery?
 local function parse_query(query_part)
     local invert, prefix, exact, suffix = false, false, false, false
     local ts, te = 1, -1  -- term start/end
-    -- Check exact match first. A ' that comes after another sigil (! or ^) is
-    -- useless. If it comes before other sigils, we treat those as literal
-    -- characters instead.
+    -- Check exact match first. A ' that comes after another sigil (! or ^) is useless. If it comes
+    -- before other sigils, we treat those as literal characters instead.
     if query_part:sub(ts, ts) == "'" then
         ts = ts + 1
         exact = true
@@ -160,6 +162,7 @@ local function parse_query(query_part)
         } or nil  -- don't score results if there's no term
 end
 
+---@param queries UfindQuery[]
 local function sort_queries(queries)
     table.sort(queries, function(a, b)
         if a.prefix ~= b.prefix then return a.prefix      -- prefix queries come first
@@ -169,8 +172,10 @@ local function sort_queries(queries)
     end)
 end
 
+---@param raw_queries string[]
 ---@return UfindQuery[][]
 local function parse_queries(raw_queries)
+    ---@type UfindQuery[][]
     local query_sets = vim.tbl_map(function(raw_query)
         if raw_query:match('^%s*$') then -- is empty
             return {}
@@ -200,11 +205,11 @@ function M.match(raw_queries, lines, pattern)
     ---@field score number[]
     local res = {}
 
-    local has_any_query = util.tbl_some(function(query_set)
+    local has_query = util.tbl_some(function(query_set)
         return not vim.tbl_isempty(query_set)
     end, query_sets)
 
-    if not has_any_query then
+    if not has_query then
         for i = 1, #lines do
             res[#res+1] = {index = i, positions = {}, score = 0}
         end
@@ -221,8 +226,9 @@ function M.match(raw_queries, lines, pattern)
             local cap_pos, cap = matches[m], matches[m+1]
             local query_set = query_sets[j]
             if query_set and not vim.tbl_isempty(query_set) then  -- has query
-                local mpos, mscore = fuzzy_match(cap, query_set)
+                local mpos = fuzzy_match(cap, query_set)
                 if mpos then  -- match success
+                    local mscore = calc_score(mpos, cap)
                     for _, mp in ipairs(mpos) do
                         pos[#pos+1] = cap_pos - 1 + mp
                     end
