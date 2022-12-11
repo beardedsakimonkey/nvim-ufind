@@ -126,7 +126,7 @@ function M.open(source, config)
         end
         local function on_exit()
             done = true
-            sched_redraw(true) -- redraw virt text without loading indicator
+            sched_redraw(true)  -- redraw virt text without loading indicator
         end
         local cmd, args
         if type(source) == 'string' then

@@ -196,12 +196,12 @@ end
 ---@param raw_queries string[]
 ---@param lines string[]
 ---@param pattern string
----@return UfOpenMatch[]
+---@return UfindOpenMatch[]
 function M.match(raw_queries, lines, pattern)
     local query_sets = parse_queries(raw_queries)
-    ---@class UfOpenMatch
+    ---@class UfindOpenMatch
     ---@field index number
-    ---@field positoins number[]
+    ---@field positions number[]?
     ---@field score number[]
     local res = {}
 
@@ -211,7 +211,7 @@ function M.match(raw_queries, lines, pattern)
 
     if not has_query then
         for i = 1, #lines do
-            res[#res+1] = {index = i, positions = {}, score = 0}
+            res[#res+1] = {index = i, positions = nil, score = 0}
         end
         return res
     end

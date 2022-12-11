@@ -4,7 +4,7 @@ local ansi = require('ufind.ansi')
 
 local api = vim.api
 
----@alias UfMatch string|UfOpenMatch
+---@alias UfindMatch string|UfindOpenMatch
 
 ---@class Ufind
 ---@field cur_input            number
@@ -16,7 +16,7 @@ local api = vim.api
 ---@field result_win           number
 ---@field vimresized_auid      number
 ---@field winclosed_auid       number
----@field matches              UfMatch[]
+---@field matches              UfindMatch[]
 ---@field top                  number (1-indexed)
 ---@field selections           {[number]: true}
 ---@field results_ns           number
@@ -58,7 +58,7 @@ function Uf.new(config, num_inputs)
     end
 
     -- For occlusion-culling results
-    ---@type UfMatch[]
+    ---@type UfindMatch[]
     o.matches = {}  -- stores current matches for when we scroll
     o.top = 1  -- line number of the line at the top of the viewport
 
@@ -304,6 +304,7 @@ function Uf:toggle_select_all()
     self:redraw_results()
 end
 
+---@return UfindMatch[]
 function Uf:get_visible_matches()
     local visible_matches = {}
     local vp_height = self:get_vp_height()
