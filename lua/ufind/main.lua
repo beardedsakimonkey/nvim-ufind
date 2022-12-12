@@ -233,6 +233,7 @@ function M.open_live(source, config)
             sched_redraw(stdoutbuf)  -- redraw virt text without loading indicator
         end
         has_drawn = false
+        done = false  -- in addition to on_stdout in case the job takes a while to start
         kill_job = util.spawn(cmd, args or {}, on_stdout, on_exit)
     end
 
