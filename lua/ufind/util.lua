@@ -67,7 +67,7 @@ end
 ---@param args      string[]
 ---@param on_stdout fun(stdoutbuf: string[])
 ---@param on_exit   fun(stdoutbuf: string[])?
----@return fun()?
+---@return fun()?, number?
 function M.spawn(cmd, args, on_stdout, on_exit)
     local uv = vim.loop
     local stdout, stderr = uv.new_pipe(), uv.new_pipe()
@@ -92,7 +92,7 @@ function M.spawn(cmd, args, on_stdout, on_exit)
     end)
     if not handle then  -- invalid command, bad permissions, etc
         M.errf('Failed to spawn: %s (%s)', cmd, pid_or_err)
-        return nil
+        return nil, nil
     end
     ---@diagnostic disable-next-line: undefined-field
     stdout:read_start(function(e, chunk)  -- on stdout
@@ -110,10 +110,7 @@ function M.spawn(cmd, args, on_stdout, on_exit)
         end
     end)
     local function kill_job()
-        -- I've no idea why, but this is needed to avoid showing stale results
-        stdoutbuf = {}
-        stderrbuf = {}
-        -- these don't seem necessary, but..
+        -- These don't seem necessary, but..
         stdout:read_stop() stdout:close()  ---@diagnostic disable-line: undefined-field
         stderr:read_stop() stderr:close()  ---@diagnostic disable-line: undefined-field
 
@@ -123,7 +120,7 @@ function M.spawn(cmd, args, on_stdout, on_exit)
             -- Don't close the handle; that'll happen in on_exit
         end
     end
-    return kill_job
+    return kill_job, pid_or_err
 end
 
 ---@param val number

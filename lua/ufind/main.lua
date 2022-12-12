@@ -208,6 +208,9 @@ function M.open_live(source, config)
     end)
 
     local kill_job
+    -- Whenever on_lines fires, we kill the previous job. However, we may still receive on_exit for
+    -- the stale job. We track the pid of the current job to ignore stale on_exit's.
+    local cur_pid
 
     local function on_lines()
         uf:move_cursor(-math.huge)  -- move cursor to top
@@ -223,18 +226,18 @@ function M.open_live(source, config)
         end
         sched_redraw({})  -- clear results in case of no stdout
         local function on_stdout(stdoutbuf)
-            -- Note: when changing the query, on_exit fires after on_lines, so we can't just set
-            -- `done = false` in on_lines.
-            done = false
             sched_redraw(stdoutbuf)
         end
+        local pid
         local function on_exit(stdoutbuf)
+            if pid ~= cur_pid then return end  -- ignore if a new job has started
             done = true
             sched_redraw(stdoutbuf)  -- redraw virt text without loading indicator
         end
         has_drawn = false
-        done = false  -- in addition to on_stdout in case the job takes a while to start
-        kill_job = util.spawn(cmd, args or {}, on_stdout, on_exit)
+        done = false
+        kill_job, pid = util.spawn(cmd, args or {}, on_stdout, on_exit)
+        cur_pid = pid
     end
 
     api.nvim_create_autocmd('BufUnload', {
