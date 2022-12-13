@@ -23,8 +23,8 @@ local default_config = {
         end
     end,
     -- Returns custom highlight ranges to highlight the result line.
-    ---@alias UfHighlightRange {col_start: number, col_end: number, hl_group: string}
-    ---@type fun(line: string): UfHighlightRange[]?
+    ---@alias UfindHighlightRange {col_start: number, col_end: number, hl_group: string}
+    ---@type fun(line: string): UfindHighlightRange[]?
     get_highlights = nil,
     -- Lua pattern with capture groups that defines scopes that will be queried individually.
     scopes = '^(.*)$',
@@ -75,7 +75,6 @@ function M.open(source, config)
     highlight.setup(config.ansi)
     local scopes, num_captures = arg.inject_empty_captures(config.scopes)
     local uf = Uf.new(config, num_captures)
-
     -- Note: lines may contain ansi codes
     local lines = type(source) == 'table' and source or {}
 
@@ -136,13 +135,9 @@ function M.open(source, config)
         end
         local kill_job = util.spawn(cmd, args or {}, on_stdout, on_exit)
 
-        api.nvim_create_autocmd('BufUnload', {
-            callback = function()
-                if kill_job then kill_job() end
-            end,
-            buffer = uf.input_buf,
-            once = true,  -- for some reason, BufUnload fires twice otherwise
-        })
+        uf:on_bufunload(function()
+            if kill_job then kill_job() end
+        end)
     else
         done = true
     end
@@ -240,13 +235,9 @@ function M.open_live(source, config)
         cur_pid = pid
     end
 
-    api.nvim_create_autocmd('BufUnload', {
-        callback = function()
-            if kill_job then kill_job() end
-        end,
-        buffer = uf.input_buf,
-        once = true,  -- for some reason, BufUnload fires twice otherwise
-    })
+    uf:on_bufunload(function()
+        if kill_job then kill_job() end
+    end)
 
     api.nvim_buf_attach(uf.input_bufs[1], false, {on_lines = on_lines})
     vim.cmd('startinsert')

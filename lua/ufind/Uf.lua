@@ -22,7 +22,7 @@ local api = vim.api
 ---@field results_ns           number
 ---@field virt_ns              number
 ---@field ansi                 boolean
----@field get_highlights       fun(string): UfHighlightRange[]
+---@field get_highlights       fun(string): UfindHighlightRange[]
 ---@field get_line             fun(self, number): string
 ---@field get_line_from_match  fun(UfMatch): string
 ---@field gidx                 fun(self, number): number
@@ -382,6 +382,15 @@ function Uf:hl_lines()
             api.nvim_buf_add_highlight(self.result_buf, self.results_ns,
             hl.hl_group, i-1, hl.col_start, hl.col_end)
         end
+    end
+end
+
+function Uf:on_bufunload(cb)
+    for _, buf in ipairs(self.input_bufs) do
+        api.nvim_create_autocmd('BufUnload', {
+            callback = cb,
+            buffer = buf,
+        })
     end
 end
 
