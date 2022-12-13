@@ -110,7 +110,8 @@ end
 ---@param offset number
 ---@return boolean need_redraw
 function Uf:move_cursor(offset)
-    local last = #self.matches
+    -- If matches is empty, the last possible line number is 1.
+    local last = math.max(#self.matches, 1)
     -- Relative cursor number (1 <= cursor_rel <= vp_height)
     local cursor_rel = self:get_cursor()
     -- Absolute cursor number (1 <= cursor_abs <= last)
