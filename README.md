@@ -119,6 +119,21 @@ local default_config = {
 }
 ```
 
+### sources
+
+For convenience, ufind also provides a few built-in sources.
+
+#### `require'ufind.source.buffers'`
+
+A function that returns an array of buffer names.  The buffers only include named, listed, existing
+buffers, and excludes those that are prefixed with "man://" as well as the current buffer.
+([source code](./lua/ufind/source/buffers.lua))
+
+#### `require'ufind.source.oldfiles'`
+
+A function that returns an array of oldfiles. The list excludes oldfiles that are directories, are
+wildignored, or start with "man://". ([source code](./lua/ufind/source/oldfiles.lua))
+
 Example configuration
 ---------------------
 ```lua
@@ -181,7 +196,7 @@ end)
 Similar plugins
 ---------------
   - [fzf-lua](https://github.com/ibhagwan/fzf-lua)
-  - [command-t](https://github.com/wincent/command-t/)
+  - [telescope](https://github.com/nvim-telescope/telescope.nvim)
   - [snap](https://github.com/camspiers/snap)
 
 Copyright
