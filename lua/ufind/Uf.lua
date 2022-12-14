@@ -24,9 +24,9 @@ local api = vim.api
 ---@field ansi                 boolean
 ---@field get_highlights       fun(string): UfindHighlightRange[]
 ---@field get_line             fun(self, number): string
----@field get_line_from_match  fun(UfMatch): string
+---@field get_line_from_match  fun(UfindMatch): string
 ---@field gidx                 fun(self, number): number
----@field is_selected          fun(self, number, UfMatch): boolean
+---@field is_selected          fun(self, number, UfindMatch): boolean
 local Uf = {}
 
 ---@param config     UfindConfig
