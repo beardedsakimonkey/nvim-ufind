@@ -110,10 +110,6 @@ function M.spawn(cmd, args, on_stdout, on_exit)
         end
     end)
     local function kill_job()
-        -- These don't seem necessary, but..
-        stdout:read_stop() stdout:close()  ---@diagnostic disable-line: undefined-field
-        stderr:read_stop() stderr:close()  ---@diagnostic disable-line: undefined-field
-
         if handle and handle:is_active() then
             ---@diagnostic disable-next-line: undefined-field
             handle:kill(uv.constants.SIGTERM)
