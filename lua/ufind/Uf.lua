@@ -188,8 +188,16 @@ function Uf:move_cursor_and_redraw(m)
     if m == 'up' or m == 'down' then
         need_redraw = self:move_cursor(m == 'up' and -1 or 1)
     elseif m == 'page_up' or m == 'page_down' then
-        local page = self:get_vp_height()
-        need_redraw = self:move_cursor(m == 'page_up' and -page or page)
+        local vp = self:get_vp_height()
+        -- first move cursor to bottom/top of the viewport
+        if m == 'page_down' then
+            local lines = api.nvim_buf_get_lines(self.result_buf, 0, -1, true)
+            api.nvim_win_set_cursor(self.result_win, {math.min(vp, #lines), 0})
+        else
+            api.nvim_win_set_cursor(self.result_win, {1, 0})
+        end
+        -- then move the cursor one page forward/backward
+        need_redraw = self:move_cursor(m == 'page_up' and -vp or vp)
     elseif m == 'home' or m == 'end' then
         need_redraw = self:move_cursor(m == 'home' and -math.huge or math.huge)
     elseif m == 'wheel_up' or m == 'wheel_down' then
