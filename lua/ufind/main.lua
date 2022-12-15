@@ -119,8 +119,11 @@ function M.open(source, config)
 
     if type(source) == 'string' or type(source) == 'function' then
         local sched_redraw = util.schedule_wrap_t(redraw)
-        local function on_stdout(stdoutbuf)
-            lines = vim.split(table.concat(stdoutbuf), '\n', {trimempty = true})
+        local function on_stdout(chunk)
+            local new_lines = vim.split(chunk, '\n', {trimempty = true})
+            for i = 1, #new_lines do
+                lines[#lines+1] = new_lines[i]
+            end
             sched_redraw(true)
         end
         local function on_exit()
@@ -184,13 +187,11 @@ function M.open_live(source, config)
     local done = false  -- current job has exited
     local has_drawn = false  -- current job has redrawn at least once
 
-    local sched_redraw = util.schedule_wrap_t(function(stdoutbuf)
+    local sched_redraw = util.schedule_wrap_t(function()
         if not api.nvim_buf_is_valid(uf.result_buf) then  -- window has been closed
             return
         end
-        local lines = vim.split(table.concat(stdoutbuf), '\n', {trimempty = true})
-        uf.matches = lines  -- store matches for when we scroll
-        uf:set_virt_text(#lines .. (done and '' or '…'))
+        uf:set_virt_text(#uf.matches .. (done and '' or '…'))
         -- Perf: if the viewport is already full with lines, and we've already redrawn at least once
         -- since the last spawn, avoid redrawing.
         -- Note that we can't check `#stdoutbuf > 1` do determine if we've already redrawn because
@@ -219,15 +220,21 @@ function M.open_live(source, config)
         else
             cmd, args = source(query)
         end
-        sched_redraw({})  -- clear results in case of no stdout
-        local function on_stdout(stdoutbuf)
-            sched_redraw(stdoutbuf)
-        end
+        uf.matches = {}
+        sched_redraw()  -- clear results in case of no stdout
         local pid
-        local function on_exit(stdoutbuf)
+        local function on_stdout(chunk)
+            if pid ~= cur_pid then return end  -- ignore if a new job has started
+            local new_matches = vim.split(chunk, '\n', {trimempty = true})
+            for i = 1, #new_matches do  -- store all matches for when we scroll
+                table.insert(uf.matches, new_matches[i])
+            end
+            sched_redraw()
+        end
+        local function on_exit()
             if pid ~= cur_pid then return end  -- ignore if a new job has started
             done = true
-            sched_redraw(stdoutbuf)  -- redraw virt text without loading indicator
+            sched_redraw()  -- redraw virt text without loading indicator
         end
         has_drawn = false
         done = false

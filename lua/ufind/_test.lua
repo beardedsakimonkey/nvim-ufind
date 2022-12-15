@@ -11,6 +11,7 @@ local parse = require'ufind.ansi'.parse
 local query = require'ufind.query'
 local match = query.match
 local find_min_subsequence = query.find_min_subsequence
+local find_last_newline = require'ufind.util'.find_last_newline
 
 local function asserteq(a, b)
     assert(
@@ -98,5 +99,10 @@ asserteq(
     parse({[[[0m[35mufind.lua[0m:[0m[32m25[0m: open({'~/[0m[1m[31mfoo[0m'})]]}),
     {"ufind.lua:25: open({'~/foo'})"}
 )
+
+asserteq(find_last_newline("aa\naa"), 3)
+asserteq(find_last_newline("aaaa\n"), 5)
+asserteq(find_last_newline("\na"), 1)
+asserteq(find_last_newline("aaaa"), nil)
 
 print('ok')

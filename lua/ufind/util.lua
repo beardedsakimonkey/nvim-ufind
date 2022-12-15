@@ -1,3 +1,5 @@
+local uv = vim.loop
+
 local M = {}
 
 ---@generic T : any
@@ -63,15 +65,28 @@ function M.assert(v, msg)
     end
 end
 
+---@param str string
+---@return number?
+function M.find_last_newline(str)  -- exposed for testing
+    for i = #str, 1, -1 do
+        if str:sub(i, i) == '\n' then
+            return i
+        end
+    end
+    return nil
+end
+
 ---@param cmd       string
 ---@param args      string[]
----@param on_stdout fun(stdoutbuf: string[])
----@param on_exit   fun(stdoutbuf: string[])?
+---@param on_stdout fun(chunk: string)
+---@param on_exit   fun()?
 ---@return fun()?, number?
 function M.spawn(cmd, args, on_stdout, on_exit)
-    local uv = vim.loop
     local stdout, stderr = uv.new_pipe(), uv.new_pipe()
-    local stdoutbuf, stderrbuf = {}, {}
+    -- When receiving stdout, the chunk may start or end with a partial line. For convenience, we
+    -- slice off and store the partial line so we can always call `on_stdout` with complete lines.
+    local stdout_overflow = ''
+    local stderrbuf = {}
     local handle, pid_or_err
     handle, pid_or_err = uv.spawn(cmd, {
         stdio = {nil, stdout, stderr},
@@ -86,7 +101,7 @@ function M.spawn(cmd, args, on_stdout, on_exit)
             end)
         end
         if on_exit then
-            on_exit(stdoutbuf)
+            on_exit()
         end
         handle:close()
     end)
@@ -97,17 +112,20 @@ function M.spawn(cmd, args, on_stdout, on_exit)
     ---@diagnostic disable-next-line: undefined-field
     stdout:read_start(function(e, chunk)  -- on stdout
         M.assert(not e, e)
-        if chunk then
-            stdoutbuf[#stdoutbuf+1] = chunk
-            on_stdout(stdoutbuf)
+        if not chunk then return end
+        local nl = M.find_last_newline(chunk)
+        if not nl then  -- just add to the overflow
+            stdout_overflow = stdout_overflow .. chunk
+        else
+            on_stdout(stdout_overflow .. chunk:sub(1, nl-1))
+            stdout_overflow = chunk:sub(nl+1)
         end
     end)
     ---@diagnostic disable-next-line: undefined-field
     stderr:read_start(function(e, chunk)  -- on stderr
         M.assert(not e, e)
-        if chunk then
-            stderrbuf[#stderrbuf+1] = chunk
-        end
+        if not chunk then return end
+        stderrbuf[#stderrbuf+1] = chunk
     end)
     local function kill_job()
         if handle and handle:is_active() then
