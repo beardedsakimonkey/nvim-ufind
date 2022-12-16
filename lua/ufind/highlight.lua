@@ -3,8 +3,10 @@ local api = vim.api
 local M = {}
 
 local function hl_exists(name)
-    local ok = pcall(api.nvim_get_hl_by_name, name, true)
-    return ok
+    local ok, hl = pcall(api.nvim_get_hl_by_name, name, true)
+    -- Hack: if the highlight has been cleared (eg via `:syn reset`), we get a table with a `true`
+    -- key for some reason.
+    return ok and hl[true] == nil
 end
 
 local function set_hl(name, val)
@@ -66,7 +68,6 @@ function M.setup(ansi)
     set_hl('UfindCursorLine', {link = 'CursorLine'})
     set_hl('UfindResultCount', {link = 'Comment'})
     set_hl('UfindMultiSelect', {link = 'Type'})
-
     if ansi then
         setup_ansi()
     end
