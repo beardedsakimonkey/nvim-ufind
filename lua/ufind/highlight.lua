@@ -3,10 +3,11 @@ local api = vim.api
 local M = {}
 
 local function hl_exists(name)
-    local ok, hl = pcall(api.nvim_get_hl_by_name, name, true)
+    local ok1, hl1 = pcall(api.nvim_get_hl_by_name, name, true)   -- check for gui attributes
+    local ok2, hl2 = pcall(api.nvim_get_hl_by_name, name, false)  -- check for cterm attributes
     -- Hack: if the highlight has been cleared (eg via `:syn reset`), we get a table with a `true`
     -- key for some reason.
-    return ok and hl[true] == nil
+    return ok1 and ok2 and hl1[true] == nil and hl2[true] == nil
 end
 
 local function set_hl(name, val)
