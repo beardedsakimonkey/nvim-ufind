@@ -102,12 +102,8 @@ function M.open(source, config)
         if not api.nvim_buf_is_valid(uf.result_buf) then  -- window has been closed
             return
         end
-        local lines_noansi = config.ansi and vim.tbl_map(ansi.strip, lines) or lines
-        -- TODO: we don't need to refilter everything on every stdout
-        local matches = require'ufind.query'.match(uf:get_queries(), lines_noansi, scopes)
-        uf.matches = matches  -- store matches for when we scroll
         uf:move_cursor(-math.huge)  -- move cursor to top
-        uf:set_virt_text(#matches .. ' / ' .. #lines .. (done and '' or '…'))
+        uf:set_virt_text(#uf.matches .. ' / ' .. #lines .. (done and '' or '…'))
         -- Perf: if the viewport is already full with lines, and we're redrawing from stdout/exit of
         -- a command, avoid redrawing. (if the user has queried before the command completed, we
         -- still redraw via `on_lines`)
@@ -117,17 +113,34 @@ function M.open(source, config)
         end
     end
 
+    ---@diagnostic disable-next-line: redefined-local
+    local function get_matches(lines)
+        local lines_noansi = config.ansi and vim.tbl_map(ansi.strip, lines) or lines
+        return require'ufind.query'.match(uf.queries, lines_noansi, scopes)
+    end
+
     if type(source) == 'string' or type(source) == 'function' then
         local sched_redraw = util.schedule_wrap_t(redraw)
-        local function on_stdout(chunk)
+        local on_stdout = function(chunk)
+            local init = #lines
             local new_lines = vim.split(chunk, '\n', {trimempty = true})
             for i = 1, #new_lines do
                 lines[#lines+1] = new_lines[i]
             end
+            local new_matches = get_matches(new_lines)
+            for i = 1, #new_matches do
+                new_matches[i].index = new_matches[i].index + init
+                table.insert(uf.matches, new_matches[i])
+            end
+            -- Re-sorting matches is too slow for such a hot path. We'll do it in on_exit instead.
             sched_redraw(true)
         end
         local function on_exit()
             done = true
+            local has_query = util.tbl_some(function(query) return query ~= "" end, uf.queries)
+            if has_query then
+                table.sort(uf.matches, function(a, b) return a.score > b.score end)
+            end
             sched_redraw(true)  -- redraw virt text without loading indicator
         end
         local cmd, args
@@ -145,12 +158,16 @@ function M.open(source, config)
         done = true
     end
 
-    -- `on_lines` can be called in various contexts wherein textlock could prevent changing buffer
-    -- contents and window layout. Use `schedule` to defer such operations to the main loop.
-    local opts = { on_lines = vim.schedule_wrap(function() redraw(false) end) }
-    for _, buf in ipairs(uf.input_bufs) do
+    for i, buf in ipairs(uf.input_bufs) do
         -- Note: `on_lines` gets called immediately because of setting the prompt
-        api.nvim_buf_attach(buf, false, opts)
+        api.nvim_buf_attach(buf, false, {
+            on_lines = function()
+                uf.queries[i] = uf.get_query(buf)  -- update stored queries
+                local matches = get_matches(lines)
+                uf.matches = matches  -- store matches for when we scroll
+                vim.schedule(function() redraw(false) end)
+            end
+        })
     end
 
     vim.cmd('startinsert')

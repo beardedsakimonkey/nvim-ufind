@@ -53,6 +53,12 @@ function Uf.new(config, num_inputs)
         api.nvim_buf_add_highlight(o.input_bufs[i], -1, 'UfindPrompt', 0, 0, #prompt)
     end
 
+    -- Store queries (because we can't call buf_get_lines in vim.loop callbacks)
+    o.queries = {}
+    for _ = 1, #o.input_bufs do
+        table.insert(o.queries, '')
+    end
+
     if config.initial_query ~= '' then
         api.nvim_feedkeys(config.initial_query, 'n', false)
     end
@@ -249,11 +255,6 @@ function Uf.get_query(buf)
     local query = buf_lines[1]
     local prompt = vim.fn.prompt_getprompt(buf)
     return query:sub(1 + #prompt)  -- trim prompt from the query
-end
-
----@return string[]
-function Uf:get_queries()
-    return vim.tbl_map(self.get_query, self.input_bufs)
 end
 
 function Uf:setup_keymaps(buf, keymaps)
