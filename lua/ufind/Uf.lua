@@ -398,12 +398,10 @@ function Uf:hl_lines()
 end
 
 function Uf:on_bufunload(cb)
-    for _, buf in ipairs(self.input_bufs) do
-        api.nvim_create_autocmd('BufUnload', {
-            callback = cb,
-            buffer = buf,
-        })
-    end
+    api.nvim_create_autocmd('BufUnload', {
+        callback = cb,
+        buffer = self.input_bufs[1],
+    })
 end
 
 return Uf
