@@ -130,7 +130,7 @@ function M.open(source, config)
             local new_matches = get_matches(new_lines)
             for i = 1, #new_matches do
                 new_matches[i].index = new_matches[i].index + init
-                table.insert(uf.matches, new_matches[i])
+                uf.matches[#uf.matches+1] = new_matches[i]
             end
             -- Re-sorting matches is too slow for such a hot path. We'll do it in on_exit instead.
             sched_redraw(true)
@@ -163,8 +163,7 @@ function M.open(source, config)
         api.nvim_buf_attach(buf, false, {
             on_lines = function()
                 uf.queries[i] = uf.get_query(buf)  -- update stored queries
-                local matches = get_matches(lines)
-                uf.matches = matches  -- store matches for when we scroll
+                uf.matches = get_matches(lines)  -- store matches for when we scroll
                 vim.schedule(function() redraw(false) end)
             end
         })
