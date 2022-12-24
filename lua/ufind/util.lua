@@ -37,11 +37,11 @@ function M.schedule_wrap_t(fn)
     return function(...)
         if args == nil then  -- nothing scheduled
             args = vim.F.pack_len(...)
-            vim.schedule(function()
+            vim.defer_fn(function()
                 local args2 = args
                 args = nil  -- erase args first in case fn is recursive
                 fn(vim.F.unpack_len(args2))
-            end)
+            end, 10)
         else  -- the scheduled fn hasn't run yet
             args = vim.F.pack_len(...)
         end
