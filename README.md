@@ -126,13 +126,12 @@ For convenience, ufind also provides a few built-in sources.
 #### `require'ufind.source.buffers'`
 
 A function that returns an array of buffer names.  The buffers only include named, listed, existing
-buffers, and excludes those that are prefixed with "man://" as well as the current buffer.
-([source code](./lua/ufind/source/buffers.lua))
+buffers, and excludes the current buffer. ([source code](./lua/ufind/source/buffers.lua))
 
 #### `require'ufind.source.oldfiles'`
 
-A function that returns an array of oldfiles. The list excludes oldfiles that are directories, are
-wildignored, or start with "man://". ([source code](./lua/ufind/source/oldfiles.lua))
+A function that returns an array of oldfiles. The list excludes oldfiles that are directories or
+are wildignored. ([source code](./lua/ufind/source/oldfiles.lua))
 
 Example configuration
 ---------------------
@@ -165,7 +164,7 @@ local function on_complete_grep(cmd, lines)
     for i, line in ipairs(lines) do
         local found, _, fname, linenr = line:find('^([^:]-):(%d+):')
         if found then
-            if i == #lines then
+            if i == #lines then  -- edit the last file
                 vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(fname) .. '|' .. linenr)
             else  -- create a buffer
                 local buf = vim.fn.bufnr(fname, true)
