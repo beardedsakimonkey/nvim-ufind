@@ -5,7 +5,6 @@ local function buffers_source()
     local bufs = vim.tbl_filter(function(buf)
         local name = vim.fn.bufname(buf)
         return name ~= ''                           -- buffer is named
-            and not vim.startswith(name, 'man://')  -- not a manpage
             and buf ~= origin_buf                   -- not the current buffer
             and vim.fn.buflisted(buf) == 1          -- buffer is listed
             and vim.fn.bufexists(buf) == 1          -- buffer exists

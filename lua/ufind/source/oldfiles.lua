@@ -4,7 +4,6 @@ local function oldfiles_source()
         return fname
             and vim.fn.empty(vim.fn.glob(fname)) == 0  -- not wildignored
             and vim.fn.isdirectory(fname) == 0         -- not a directory
-            and not vim.startswith(fname, 'man://')    -- not a manpage
     end, vim.v.oldfiles)
 
     return fnames
