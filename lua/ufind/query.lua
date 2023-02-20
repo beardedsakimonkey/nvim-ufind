@@ -79,19 +79,16 @@ end
 ---@param queries UfindQuery[]
 ---@return number[]?
 local function fuzzy_match(str, queries)
-    if not str or #str == 0 or vim.tbl_isempty(queries) then return nil end
+    if not str or #str == 0 then return nil end
     str = str:lower()
     local positions = {}
+    local score = 0
     for _, q in ipairs(queries) do
         q.term = q.term:lower()
         if q.exact then  -- has '
             local starti, endi = str:find(q.term, 1, true)
             if not starti then
                 return nil
-            else
-                for i = starti, endi do
-                    positions[#positions+1] = i
-                end
             end
         elseif q.prefix and q.suffix then  -- has ^ and $
             local match = str == q.term  -- so do a full match
@@ -116,15 +113,18 @@ local function fuzzy_match(str, queries)
                 return nil
             end
         else
-            local results = M.find_min_subsequence(str, q.term)
-            if not results then return nil end
-            for _, pos in ipairs(results) do
-                positions[#positions+1] = pos
+            local mpositions = M.find_min_subsequence(str, q.term)
+            if mpositions == nil then
+                return nil
             end
+            for _, mposition in ipairs(mpositions) do
+                positions[#positions+1] = mposition
+            end
+            score = score + calc_score(mpositions, str)
         end
     end
     -- None of the matches failed
-    return positions
+    return positions, score
 end
 
 ---@return UfindQuery?
@@ -226,9 +226,8 @@ function M.match(raw_queries, lines, pattern)
             local cap_pos, cap = matches[m], matches[m+1]
             local query_set = query_sets[j]
             if query_set and not vim.tbl_isempty(query_set) then  -- has query
-                local mpos = fuzzy_match(cap, query_set)
+                local mpos, mscore = fuzzy_match(cap, query_set)
                 if mpos then  -- match success
-                    local mscore = calc_score(mpos, cap)
                     for _, mp in ipairs(mpos) do
                         pos[#pos+1] = cap_pos - 1 + mp
                     end
