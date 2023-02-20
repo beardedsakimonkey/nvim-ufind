@@ -10,7 +10,6 @@ local split_cmd = require'ufind.arg'.split_cmd_aux
 local parse = require'ufind.ansi'.parse
 local query = require'ufind.query'
 local match = query.match
-local find_min_subsequence = query.find_min_subsequence
 local find_last_newline = require'ufind.util'.find_last_newline
 
 local function asserteq(a, b)
@@ -19,26 +18,6 @@ local function asserteq(a, b)
         string.format('Expected %s to equal %s', vim.inspect(a), vim.inspect(b))
     )
 end
-
-asserteq(
-    find_min_subsequence('~/foo/bar/foo.txt', 'foo'),
-    {11, 12, 13}
-)
-
-asserteq(
-    find_min_subsequence('~/foo/bar/frodo.txt', 'foo'),
-    {3, 4, 5}
-)
-
-asserteq(
-    find_min_subsequence('~/foo/bar/frodo.txt', 'oof'),
-    {4, 5, 11}
-)
-
-asserteq(
-    find_min_subsequence('~/foo/bar/frodo.txt', 'to'),
-    nil
-)
 
 local pat = require'ufind.arg'.inject_empty_captures '^(.*)$'
 local pat_colon = require'ufind.arg'.inject_empty_captures '^([^:]-):(.*)$'

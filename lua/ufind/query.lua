@@ -1,84 +1,12 @@
 local util = require('ufind.util')
+local default_fuzzy_match = require('ufind.fuzzy_match.default')
 
 local M = {}
-
----Find the minimum subsequence in `str` containing `chars` (in order) using a
----sliding window algorithm.
----@param str   string
----@param chars string
-function M.find_min_subsequence(str, chars)  -- exposed for testing
-    local s, c = 1, 1
-    local seq = {
-        length = -1,
-        start_index = nil,
-        positions = {},
-    }
-    while s <= #str do
-        -- Increment `s` until it is on the character that `c` is on
-        while c <= #chars and s <= #str do
-            if chars:sub(c, c) == str:sub(s, s) then
-                break
-            end
-            s = s + 1
-        end
-        if s > #str then break end
-        -- Find the next valid subsequence in `str`
-        local new_min = {
-            length = 1,
-            start_index = s,
-            positions = {},
-        }
-        while c <= #chars and s <= #str do
-            if chars:sub(c, c) ~= str:sub(s, s) then
-                s = s + 1
-                new_min.length = new_min.length + 1
-            else
-                new_min.positions[#new_min.positions+1] = s
-                c = c + 1
-                s = s + 1
-            end
-        end
-        if c > #chars and (new_min.length <= seq.length or seq.length == -1) then
-            seq = new_min
-        end
-        c = 1
-        s = new_min.start_index + 1
-    end
-    if seq.start_index == nil then
-        return nil
-    else
-        return seq.positions
-    end
-end
-
----@param positions number[]
----@param str string
-local function calc_score(positions, str)
-    table.sort(positions)  -- for calculating consecutive char bonus
-    local tail_start = str:find('[^/]+/?$')
-    local tail_streak = tail_start
-    local score = 0
-    local prev_pos = -1
-    for _, pos in ipairs(positions) do
-        local consec = pos == prev_pos + 1
-        local tail = tail_start and pos >= tail_start or false
-        local word_start = pos == 0 or (pos > 1 and str:sub(pos-1, pos-1) == '/')
-        if consec     then score = score + 1 end  -- consecutive char
-        if tail       then score = score + 1 end  -- path tail
-        if word_start then score = score + 1 end  -- start of word
-        if consec and prev_pos == tail_streak then   -- consecutive streak from tail start
-            score = score + 1
-            tail_streak = pos
-        end
-        prev_pos = pos
-    end
-    return score
-end
 
 -- Precondition: has queries
 ---@param queries UfindQuery[]
 ---@return number[]?
-local function fuzzy_match(str, queries)
+local function match_capture(str, queries)
     if not str or #str == 0 then return nil end
     str = str:lower()
     local positions = {}
@@ -113,14 +41,14 @@ local function fuzzy_match(str, queries)
                 return nil
             end
         else
-            local mpositions = M.find_min_subsequence(str, q.term)
-            if mpositions == nil then
+            local mpositions, mscore = default_fuzzy_match(str, q.term)
+            if mpositions == nil then  -- no fuzzy match
                 return nil
             end
             for _, mposition in ipairs(mpositions) do
                 positions[#positions+1] = mposition
             end
-            score = score + calc_score(mpositions, str)
+            score = score + mscore
         end
     end
     -- None of the matches failed
@@ -162,16 +90,6 @@ local function parse_query(query_part)
         } or nil  -- don't score results if there's no term
 end
 
----@param queries UfindQuery[]
-local function sort_queries(queries)
-    table.sort(queries, function(a, b)
-        if a.prefix ~= b.prefix then return a.prefix      -- prefix queries come first
-        elseif a.suffix ~= b.suffix then return a.suffix  -- then suffix queries
-        elseif a.invert ~= b.invert then return a.invert  -- then inverted queries
-        else return #a.term < #b.term end                 -- then shorter queries
-    end)
-end
-
 ---@param raw_queries string[]
 ---@return UfindQuery[][]
 local function parse_queries(raw_queries)
@@ -188,7 +106,12 @@ local function parse_queries(raw_queries)
     end, raw_queries)
     -- Sort queries for performance
     for _, queries in ipairs(query_sets) do
-        sort_queries(queries)
+        table.sort(queries, function(a, b)
+            if a.prefix ~= b.prefix then return a.prefix      -- prefix queries come first
+            elseif a.suffix ~= b.suffix then return a.suffix  -- then suffix queries
+            elseif a.invert ~= b.invert then return a.invert  -- then inverted queries
+            else return #a.term < #b.term end                 -- then shorter queries
+        end)
     end
     return query_sets
 end
@@ -226,7 +149,7 @@ function M.match(raw_queries, lines, pattern)
             local cap_pos, cap = matches[m], matches[m+1]
             local query_set = query_sets[j]
             if query_set and not vim.tbl_isempty(query_set) then  -- has query
-                local mpos, mscore = fuzzy_match(cap, query_set)
+                local mpos, mscore = match_capture(cap, query_set)
                 if mpos then  -- match success
                     for _, mp in ipairs(mpos) do
                         pos[#pos+1] = cap_pos - 1 + mp
