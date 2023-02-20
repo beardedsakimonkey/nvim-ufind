@@ -28,6 +28,8 @@ local default_config = {
     ---@type fun(line: string): UfindHighlightRange[]?
     get_highlights = nil,
 
+    fuzzy_match = require('ufind.fuzzy_match.default'),
+
     -- Lua pattern with capture groups that defines scopes that will be queried individually.
     scopes = '^(.*)$',
 
@@ -123,7 +125,7 @@ function M.open(source, config)
     ---@diagnostic disable-next-line: redefined-local
     local function get_matches(lines)
         local lines_noansi = config.ansi and vim.tbl_map(ansi.strip, lines) or lines
-        return require'ufind.query'.match(uf.queries, lines_noansi, scopes)
+        return require'ufind.query'.match(uf.queries, lines_noansi, scopes, config.fuzzy_match)
     end
 
     if type(source) == 'string' or type(source) == 'function' then

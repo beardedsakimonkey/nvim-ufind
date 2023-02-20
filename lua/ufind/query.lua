@@ -1,12 +1,11 @@
 local util = require('ufind.util')
-local default_fuzzy_match = require('ufind.fuzzy_match.default')
 
 local M = {}
 
 -- Precondition: has queries
 ---@param queries UfindQuery[]
 ---@return number[]?
-local function match_capture(str, queries)
+local function match_capture(str, queries, fuzzy_match_fn)
     if not str or #str == 0 then return nil end
     str = str:lower()
     local positions = {}
@@ -41,7 +40,7 @@ local function match_capture(str, queries)
                 return nil
             end
         else
-            local mpositions, mscore = default_fuzzy_match(str, q.term)
+            local mpositions, mscore = fuzzy_match_fn(str, q.term)
             if mpositions == nil then  -- no fuzzy match
                 return nil
             end
@@ -118,9 +117,10 @@ end
 
 ---@param raw_queries string[]
 ---@param lines string[]
----@param pattern string
+---@param scopes string
+---@param fuzzy_match_fn fun()?
 ---@return UfindOpenMatch[]
-function M.match(raw_queries, lines, pattern)
+function M.match(raw_queries, lines, scopes, fuzzy_match_fn)
     local query_sets = parse_queries(raw_queries)
     ---@class UfindOpenMatch
     ---@field index number
@@ -143,13 +143,13 @@ function M.match(raw_queries, lines, pattern)
         local fail = false
         local pos = {}
         local score = 0
-        local matches = util.pack(string.match(line, pattern))
+        local matches = util.pack(string.match(line, scopes))
         local j = 1
         for m = 1, #matches, 2 do  -- for each capture
             local cap_pos, cap = matches[m], matches[m+1]
             local query_set = query_sets[j]
             if query_set and not vim.tbl_isempty(query_set) then  -- has query
-                local mpos, mscore = match_capture(cap, query_set)
+                local mpos, mscore = match_capture(cap, query_set, fuzzy_match_fn)
                 if mpos then  -- match success
                     for _, mp in ipairs(mpos) do
                         pos[#pos+1] = cap_pos - 1 + mp
