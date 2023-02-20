@@ -79,17 +79,23 @@ local default_config = {
             end
         end
     end,
+
     -- Returns custom highlight ranges to highlight the result line.
     ---@type fun(line: string): {col_start: number, col_end: number, hl_group: string}[]?
     get_highlights = nil,
+
     -- Lua pattern with capture groups that defines scopes that will be queried individually.
     scopes = '^(.*)$',
+
     -- Whether to parse ansi escape codes.
     ansi = false,
+
     -- Initial query to use when first opened.
     initial_query = '',
+
     -- Initial scope to use when first opened.
     initial_scope = 1,
+
     layout = {
         ---@type 'none'|'single'|'double'|'rounded'|'solid'|string[]
         border = 'none',
@@ -97,6 +103,7 @@ local default_config = {
         width = 0.7,
         input_on_top = true,
     },
+
     keymaps = {
         quit = '<Esc>',
         open = '<CR>',
@@ -197,6 +204,7 @@ Similar plugins
   - [fzf-lua](https://github.com/ibhagwan/fzf-lua)
   - [telescope](https://github.com/nvim-telescope/telescope.nvim)
   - [snap](https://github.com/camspiers/snap)
+  - [azy.nvim](https://git.sr.ht/~vigoux/azy.nvim/)
 
 Copyright
 ---------

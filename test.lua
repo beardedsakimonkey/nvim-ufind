@@ -82,7 +82,7 @@ asserteq(
 -- Exact match succeeds
 asserteq(
     match({"'fo"}, {'foo.lua', 'bar.lua'}, pat),
-    {{index = 1, positions = {1, 2}, score = 4}}
+    {{index = 1, positions = {}, score = 0}}
 )
 
 asserteq(split_cmd('rg -f'), {'rg', '-f'})

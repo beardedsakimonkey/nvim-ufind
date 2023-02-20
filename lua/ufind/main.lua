@@ -22,18 +22,24 @@ local default_config = {
             end
         end
     end,
+
     -- Returns custom highlight ranges to highlight the result line.
     ---@alias UfindHighlightRange {col_start: number, col_end: number, hl_group: string}
     ---@type fun(line: string): UfindHighlightRange[]?
     get_highlights = nil,
+
     -- Lua pattern with capture groups that defines scopes that will be queried individually.
     scopes = '^(.*)$',
+
     -- Whether to parse ansi escape codes.
     ansi = false,
+
     -- Initial query to use when first opened.
     initial_query = '',
+
     -- Initial scope to use when first opened.
     initial_scope = 1,
+
     ---@class UfindLayout
     layout = {
         ---@type 'none'|'single'|'double'|'rounded'|'solid'|string[]
@@ -42,6 +48,7 @@ local default_config = {
         width = 0.7,
         input_on_top = true,
     },
+
     ---@class UfindKeymaps
     keymaps = {
         quit = '<Esc>',
