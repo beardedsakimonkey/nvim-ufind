@@ -11,7 +11,7 @@ local parse = require'ufind.ansi'.parse
 local query = require'ufind.query'
 local match = query.match
 local find_last_newline = require'ufind.util'.find_last_newline
-local fuzzy_match = require'ufind.fuzzy_match.default'
+local default_match = require'ufind.fuzzy_match.default'
 
 local function asserteq(a, b)
     assert(
@@ -24,44 +24,44 @@ local pat = require'ufind.arg'.inject_empty_captures '^(.*)$'
 local pat_colon = require'ufind.arg'.inject_empty_captures '^([^:]-):(.*)$'
 
 asserteq(
-    match({'x'}, {'x.lua', 'y.lua'}, pat, require'ufind.fuzzy_match.default'),
+    match({'x'}, {'x.lua', 'y.lua'}, pat, default_match),
     {{index = 1, positions = {1}, score = 1}}
 )
 
 asserteq(
-    match({'fil', 'foo'}, {'file.lua: print(foo)'}, pat_colon, fuzzy_match),
+    match({'fil', 'foo'}, {'file.lua: print(foo)'}, pat_colon, default_match),
     {{index = 1, positions = {1, 2, 3, 17, 18, 19}, score = 12}}
 )
 
 asserteq(
-    match({'lua$', 'a'}, {'file.lua: a', 'file.c: x'}, pat_colon, fuzzy_match),
+    match({'lua$', 'a'}, {'file.lua: a', 'file.c: x'}, pat_colon, default_match),
     {{index = 1, positions = {11}, score = 1}}
 )
 
 asserteq(
-    match({'', 'zxczxc'}, {'file: a', 'file: x'}, pat_colon, fuzzy_match),
+    match({'', 'zxczxc'}, {'file: a', 'file: x'}, pat_colon, default_match),
     {}
 )
 
 asserteq(
-    match({'', 'zxc'}, {'file: zxc', 'file: x'}, pat_colon, fuzzy_match),
+    match({'', 'zxc'}, {'file: zxc', 'file: x'}, pat_colon, default_match),
     {{index = 1, positions = {7, 8, 9}, score = 5}}
 )
 
 asserteq(
-    match({'', 'sub'}, {'file: s:sub()', 'file: x'}, pat_colon, fuzzy_match),
+    match({'', 'sub'}, {'file: s:sub()', 'file: x'}, pat_colon, default_match),
     {{index = 1, positions = {9, 10, 11}, score = 5}}
 )
 
 -- Exact match fails
 asserteq(
-    match({"'la"}, {'foo.lua', 'bar.lua'}, pat, fuzzy_match),
+    match({"'la"}, {'foo.lua', 'bar.lua'}, pat, default_match),
     {}
 )
 
 -- Exact match succeeds
 asserteq(
-    match({"'fo"}, {'foo.lua', 'bar.lua'}, pat, fuzzy_match),
+    match({"'fo"}, {'foo.lua', 'bar.lua'}, pat, default_match),
     {{index = 1, positions = {}, score = 0}}
 )
 

@@ -71,11 +71,14 @@ local function calc_score(positions, str)
     return score
 end
 
--- Do a plain match of `str` using `query`. The matching algorithm is slow but
--- is guaranteed to find the best match. The scoring algorithm assumes the `str`
--- is a file path, favoring matches on the path tail.
+-- Do a fuzzy, case-insensitive match of `str` using `query`. The matching
+-- algorithm is slow but is guaranteed to find the best match. The scoring
+-- algorithm assumes the `str` is a file path, favoring matches on the path
+-- tail.
 ---@return (number[], number) | nil
-local function default_fuzzy_match(str, query)
+local function default_match(str, query)
+    str = str:lower()
+    query = query:lower()
     local positions = find_min_subsequence(str, query)
     if positions == nil then
         return nil
@@ -84,4 +87,4 @@ local function default_fuzzy_match(str, query)
     return positions, score
 end
 
-return default_fuzzy_match
+return default_match

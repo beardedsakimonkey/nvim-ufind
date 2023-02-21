@@ -5,50 +5,49 @@ local M = {}
 -- Precondition: has queries
 ---@param queries UfindQuery[]
 ---@return number[]?
-local function match_capture(str, queries, fuzzy_match_fn)
+local function match_capture(str, queries, match_fn)
     if not str or #str == 0 then return nil end
-    str = str:lower()
+    local str_lc = str:lower()
     local positions = {}
     local score = 0
     for _, q in ipairs(queries) do
-        q.term = q.term:lower()
+        local term_lc = q.term:lower()
         if q.exact then  -- has '
-            local starti, endi = str:find(q.term, 1, true)
+            local starti, endi = str_lc:find(term_lc, 1, true)
             if not starti then
                 return nil
             end
         elseif q.prefix and q.suffix then  -- has ^ and $
-            local match = str == q.term  -- so do a full match
+            local match = str_lc == term_lc  -- so do a full match
             if not q.invert and not match
                 or q.invert and match then
                 return nil
             end
         elseif q.prefix then  -- has ^
-            local match = vim.startswith(str, q.term)
+            local match = vim.startswith(str_lc, term_lc)
             if not q.invert and not match
                 or q.invert and match then
                 return nil
             end
         elseif q.suffix then  -- has $
-            local match = vim.endswith(str, q.term)
+            local match = vim.endswith(str_lc, term_lc)
             if not q.invert and not match
                 or q.invert and match then
                 return nil
             end
         elseif q.invert then  -- has !
-            if str:find(q.term, 1, true) then
+            if str_lc:find(term_lc, 1, true) then
                 return nil
             end
         else
-            -- TODO: don't pass lowered str/term
-            local mpositions, mscore = fuzzy_match_fn(str, q.term)
-            if mpositions == nil then  -- no fuzzy match
+            local m_positions, m_score = match_fn(str, q.term)
+            if m_positions == nil then  -- no match
                 return nil
             end
-            for _, mposition in ipairs(mpositions) do
-                positions[#positions+1] = mposition
+            for _, m_pos in ipairs(m_positions) do
+                positions[#positions+1] = m_pos
             end
-            score = score + mscore
+            score = score + m_score
         end
     end
     -- None of the matches failed
@@ -119,9 +118,9 @@ end
 ---@param raw_queries string[]
 ---@param lines string[]
 ---@param scopes string
----@param fuzzy_match_fn fun()?
+---@param match_fn fun()?
 ---@return UfindOpenMatch[]
-function M.match(raw_queries, lines, scopes, fuzzy_match_fn)
+function M.match(raw_queries, lines, scopes, match_fn)
     local query_sets = parse_queries(raw_queries)
     ---@class UfindOpenMatch
     ---@field index number
@@ -150,7 +149,7 @@ function M.match(raw_queries, lines, scopes, fuzzy_match_fn)
             local cap_pos, cap = matches[m], matches[m+1]
             local query_set = query_sets[j]
             if query_set and not vim.tbl_isempty(query_set) then  -- has query
-                local mpos, mscore = match_capture(cap, query_set, fuzzy_match_fn)
+                local mpos, mscore = match_capture(cap, query_set, match_fn)
                 if mpos then  -- match success
                     for _, mp in ipairs(mpos) do
                         pos[#pos+1] = cap_pos - 1 + mp
