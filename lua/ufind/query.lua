@@ -40,6 +40,7 @@ local function match_capture(str, queries, fuzzy_match_fn)
                 return nil
             end
         else
+            -- TODO: don't pass lowered str/term
             local mpositions, mscore = fuzzy_match_fn(str, q.term)
             if mpositions == nil then  -- no fuzzy match
                 return nil
