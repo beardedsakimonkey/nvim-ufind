@@ -28,11 +28,11 @@ local default_config = {
     ---@type fun(line: string): UfindHighlightRange[]?
     get_highlights = nil,
 
-    -- Function to override the default fuzzy matcher with. If `query` is contained in `str`, it
+    -- Function to override the default matcher with. If `query` is contained in `str`, it
     -- should return a list of positions and a score. Otherwise, it returns nil. The higher the
     -- score, the better the match.
     ---@type fun(str: string, query: string): (number[],number)|nil
-    match = require('ufind.fuzzy_match.default'),
+    match = require('ufind.match.default'),
 
     -- Lua pattern with capture groups that defines scopes that will be queried individually.
     scopes = '^(.*)$',

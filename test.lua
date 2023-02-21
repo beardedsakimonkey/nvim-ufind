@@ -11,7 +11,7 @@ local parse = require'ufind.ansi'.parse
 local query = require'ufind.query'
 local match = query.match
 local find_last_newline = require'ufind.util'.find_last_newline
-local default_match = require'ufind.fuzzy_match.default'
+local default_match = require'ufind.match.default'
 
 local function asserteq(a, b)
     assert(
