@@ -88,7 +88,7 @@ local default_config = {
     -- should return a list of positions and a score. Otherwise, it returns nil. The higher the
     -- score, the better the match.
     ---@type fun(str: string, query: string): (number[],number)|nil
-    match = require('ufind.match.default'),
+    match = require('ufind.matcher.default'),
 
     -- Lua pattern with capture groups that defines scopes that will be queried individually.
     scopes = '^(.*)$',

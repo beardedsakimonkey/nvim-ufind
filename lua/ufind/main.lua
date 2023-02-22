@@ -32,7 +32,7 @@ local default_config = {
     -- should return a list of positions and a score. Otherwise, it returns nil. The higher the
     -- score, the better the match.
     ---@type fun(str: string, query: string): (number[],number)|nil
-    match = require('ufind.match.default'),
+    matcher = require('ufind.matcher.default'),
 
     -- Lua pattern with capture groups that defines scopes that will be queried individually.
     scopes = '^(.*)$',
@@ -129,7 +129,7 @@ function M.open(source, config)
     ---@diagnostic disable-next-line: redefined-local
     local function get_matches(lines)
         local lines_noansi = config.ansi and vim.tbl_map(ansi.strip, lines) or lines
-        return require'ufind.query'.match(uf.queries, lines_noansi, scopes, config.match)
+        return require'ufind.query'.match(uf.queries, lines_noansi, scopes, config.matcher)
     end
 
     if type(source) == 'string' or type(source) == 'function' then
@@ -177,6 +177,7 @@ function M.open(source, config)
             on_lines = function()
                 uf.queries[i] = uf.get_query(buf)  -- update stored queries
                 uf.matches = get_matches(lines)  -- store matches for when we scroll
+                -- TODO: should we cancel previous redraw?
                 vim.schedule(function() redraw(false) end)
             end
         })

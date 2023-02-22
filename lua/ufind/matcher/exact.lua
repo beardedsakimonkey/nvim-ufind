@@ -1,5 +1,5 @@
 -- Non-fuzzy, smart-case matcher. Useful for filtering grep results.
-local function match_exact(str, query)
+local function exact_matcher(str, query)
     local has_upper = query:lower() ~= query
     if not has_upper then  -- do case-insensitive search
         str = str:lower()
@@ -15,4 +15,4 @@ local function match_exact(str, query)
     return positions, 1
 end
 
-return match_exact
+return exact_matcher

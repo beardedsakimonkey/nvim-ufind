@@ -5,7 +5,7 @@ local M = {}
 -- Precondition: has queries
 ---@param queries UfindQuery[]
 ---@return number[]?
-local function match_capture(str, queries, match_fn)
+local function match_capture(str, queries, matcher)
     if not str or #str == 0 then return nil end
     local str_lc = str:lower()
     local positions = {}
@@ -40,7 +40,7 @@ local function match_capture(str, queries, match_fn)
                 return nil
             end
         else
-            local m_positions, m_score = match_fn(str, q.term)
+            local m_positions, m_score = matcher(str, q.term)
             if m_positions == nil then  -- no match
                 return nil
             end
@@ -118,9 +118,9 @@ end
 ---@param raw_queries string[]
 ---@param lines string[]
 ---@param scopes string
----@param match_fn fun()?
+---@param matcher fun()?
 ---@return UfindOpenMatch[]
-function M.match(raw_queries, lines, scopes, match_fn)
+function M.match(raw_queries, lines, scopes, matcher)
     local query_sets = parse_queries(raw_queries)
     ---@class UfindOpenMatch
     ---@field index number
@@ -149,7 +149,7 @@ function M.match(raw_queries, lines, scopes, match_fn)
             local cap_pos, cap = matches[m], matches[m+1]
             local query_set = query_sets[j]
             if query_set and not vim.tbl_isempty(query_set) then  -- has query
-                local mpos, mscore = match_capture(cap, query_set, match_fn)
+                local mpos, mscore = match_capture(cap, query_set, matcher)
                 if mpos then  -- match success
                     for _, mp in ipairs(mpos) do
                         pos[#pos+1] = cap_pos - 1 + mp

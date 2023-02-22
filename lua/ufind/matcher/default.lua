@@ -76,7 +76,7 @@ end
 -- algorithm assumes the `str` is a file path, favoring matches on the path
 -- tail.
 ---@return (number[], number) | nil
-local function default_match(str, query)
+local function default_matcher(str, query)
     str = str:lower()
     query = query:lower()
     local positions = find_min_subsequence(str, query)
@@ -87,4 +87,4 @@ local function default_match(str, query)
     return positions, score
 end
 
-return default_match
+return default_matcher
