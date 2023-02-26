@@ -20,6 +20,28 @@ local function asserteq(a, b)
     )
 end
 
+local find_min_subsequence = require'ufind.helper.find_min_subsequence'
+
+asserteq(
+    find_min_subsequence('~/foo/bar/foo.txt', 'foo'),
+    {11, 12, 13}
+)
+
+asserteq(
+    find_min_subsequence('~/foo/bar/frodo.txt', 'foo'),
+    {3, 4, 5}
+)
+
+asserteq(
+    find_min_subsequence('~/foo/bar/frodo.txt', 'oof'),
+    {4, 5, 11}
+)
+
+asserteq(
+    find_min_subsequence('~/foo/bar/frodo.txt', 'to'),
+    nil
+)
+
 local pat = require'ufind.arg'.inject_empty_captures '^(.*)$'
 local pat_colon = require'ufind.arg'.inject_empty_captures '^([^:]-):(.*)$'
 
