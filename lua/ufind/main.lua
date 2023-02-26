@@ -77,6 +77,28 @@ local default_config = {
     },
 }
 
+function validate_config(config)
+    for k, _ in pairs(config) do
+        if default_config[k] == nil then
+            util.warnf('Invalid config key `config.%s`', k)
+        end
+    end
+    if config.layout then
+        for k, _ in pairs(config.layout) do
+            if default_config.layout[k] == nil then
+                util.warnf('Invalid config key `config.layout.%s`', k)
+            end
+        end
+    end
+    if config.keymaps then
+        for k, _ in pairs(config.keymaps) do
+            if default_config.keymaps[k] == nil then
+                util.warnf('Invalid config key `config.keymap.%s`', k)
+            end
+        end
+    end
+end
+
 ---@param source string[] | string | fun():string,string[]?
 ---@param config UfindConfig?
 function M.open(source, config)
@@ -84,6 +106,7 @@ function M.open(source, config)
         source = {source, {'table', 'string', 'function'}},
         config = {config, 'table', true},
     })
+    validate_config(config)
     config = vim.tbl_deep_extend('keep', config or {}, default_config)
     highlight.setup(config.ansi)
     local scopes, num_captures = arg.inject_empty_captures(config.scopes)
@@ -193,6 +216,7 @@ function M.open_live(source, config)
         source = {source, {'string', 'function'}},
         config = {config, 'table', true},
     })
+    validate_config(config)
     config = vim.tbl_deep_extend('keep', config or {}, default_config)
     highlight.setup(config.ansi)
     local uf = Uf.new(config)
