@@ -22,7 +22,7 @@ local api = vim.api
 ---@field results_ns           number
 ---@field virt_ns              number
 ---@field ansi                 boolean
----@field get_highlights       fun(string): UfindHighlightRange[]
+---@field get_highlights       boolean | (fun(string): UfindHighlightRange[])
 ---@field get_line             fun(self, number): string
 ---@field get_line_from_match  fun(UfindMatch): string
 ---@field gidx                 fun(self, number): number

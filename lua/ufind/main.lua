@@ -25,8 +25,8 @@ local default_config = {
 
     -- Returns custom highlight ranges to highlight the result line.
     ---@alias UfindHighlightRange {col_start: number, col_end: number, hl_group: string}
-    ---@type fun(line: string): UfindHighlightRange[]?
-    get_highlights = nil,
+    ---@type boolean | (fun(line: string): UfindHighlightRange[])
+    get_highlights = false,
 
     -- Function to override the default matcher with. If `query` is contained in `str`, it
     -- should return a list of positions and a score. Otherwise, it returns nil. The higher the
