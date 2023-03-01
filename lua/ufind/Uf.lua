@@ -244,7 +244,9 @@ function Uf:open_result(cmd)
     else
         local cursor = self:get_cursor()
         local line = api.nvim_buf_get_lines(self.result_buf, cursor-1, cursor, false)[1]
-        lines[1] = line  -- ansi codes already stripped
+        if line ~= '' then
+            lines[1] = line  -- ansi codes already stripped
+        end
     end
     if next(lines) ~= nil then
         self:quit()  -- cleanup first in case `on_complete` opens another finder
