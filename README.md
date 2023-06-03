@@ -67,12 +67,14 @@ default config:
 
 ```lua
 local default_config = {
-    -- Called when selecting an item to open.
-    ---@type fun(cmd: 'edit'|'split'|'vsplit'|'tabedit', lines: string[])
-    on_complete = function(cmd, lines)
+    -- Called when selecting an item to open. `action` is the name of the table
+    -- key corresponding to the key that was pressed. (eg. 'edit')
+    ---@type fun(action: string, lines: string[])
+    on_complete = function(action, lines)
+        local is_edit = action:match('edit') or action:match('split')
         for i, line in ipairs(lines) do
-            if i == #lines then  -- open the file
-                vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(line))
+            if i == #lines or not is_edit then  -- execute action
+                vim.cmd(action .. ' ' .. vim.fn.fnameescape(line))
             else  -- create a buffer
                 local buf = vim.fn.bufnr(line, true)
                 vim.bo[buf].buflisted = true
@@ -112,10 +114,12 @@ local default_config = {
 
     keymaps = {
         quit = '<Esc>',
-        open = '<CR>',
-        open_split = '<C-s>',
-        open_vsplit = '<C-v>',
-        open_tab = '<C-t>',
+        actions = {
+            edit = '<CR>',
+            split = '<C-s>',
+            vsplit = '<C-v>',
+            tabedit = '<C-t>',
+        },
         up = {'<C-k>', '<Up>'},
         down = {'<C-j>', '<Down>'},
         page_up = {'<C-b>', '<PageUp>'},
@@ -154,13 +158,23 @@ local ufind = require'ufind'
 local function cfg(t)
     return vim.tbl_deep_extend('keep', t, {
         layout = { border = 'single' },
-        keymaps = { open_vsplit = '<C-l>' },
+        keymaps = {
+            actions = {
+                vsplit = '<C-l>',
+            }
+        },
     })
 end
 
 -- Buffers
 vim.keymap.set('n', '<space>b', function()
-    ufind.open(require'ufind.source.buffers'(), cfg{})
+    ufind.open(require'ufind.source.buffers'(), cfg{
+        keymaps = {
+            actions = {
+                bd = '<C-d>',
+            },
+        },
+    })
 end)
 
 -- Oldfiles
@@ -173,12 +187,12 @@ vim.keymap.set('n', '<space>f', function()
     ufind.open_live('fd --color=always --type=file --', cfg{ansi = true})
 end)
 
-local function on_complete_grep(cmd, lines)
+local function on_complete_grep(action, lines)
     for i, line in ipairs(lines) do
         local found, _, fname, linenr = line:find('^([^:]-):(%d+):')
         if found then
             if i == #lines then  -- edit the last file
-                vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(fname) .. '|' .. linenr)
+                vim.cmd(action .. ' ' .. vim.fn.fnameescape(fname) .. '|' .. linenr)
             else  -- create a buffer
                 local buf = vim.fn.bufnr(fname, true)
                 vim.bo[buf].buflisted = true
@@ -204,6 +218,55 @@ vim.keymap.set('n', '<space>g', function()
     })
 end)
 ```
+
+Advanced configuration
+----------------------
+
+### Custom actions
+
+The actions in the default config only handle opening files. Custom actions can
+be configured in two ways:
+
+#### 1. Using the name of the action as the command to execute
+
+```lua
+vim.keymap.set('n', '<space>b', function()
+    ufind.open(require'ufind.source.buffers'(), cfg{
+        keymaps = {
+            actions = {
+                bd = '<C-d>',
+            },
+        },
+    })
+end)
+```
+
+#### 2. Custom handling in `on_complete()`
+
+```lua
+vim.keymap.set('n', '<space>b', function()
+    ufind.open(require'ufind.source.buffers'(), cfg{
+        keymaps = {
+            actions = {
+                delete_buffer = '<C-d>',
+            },
+        },
+        on_complete = function(action, lines)
+            if action == 'delete_buffer' then
+                for _, line in ipairs(lines) do
+                    vim.cmd('bd ' .. vim.fn.fnameescape(line))
+                end
+            else
+                -- ...
+            end
+        end,
+    })
+end)
+```
+
+### Custom result display
+
+TODO
 
 Similar plugins
 ---------------

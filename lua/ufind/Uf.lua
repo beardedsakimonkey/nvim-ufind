@@ -234,7 +234,7 @@ function Uf:quit()
     if api.nvim_win_is_valid(self.result_win) then api.nvim_win_close(self.result_win, false) end
 end
 
-function Uf:open_result(cmd)
+function Uf:open_result(action)
     local lines = {}
     if next(self.selections) ~= nil then
         for idx, _ in pairs(self.selections) do
@@ -250,7 +250,7 @@ function Uf:open_result(cmd)
     end
     if next(lines) ~= nil then
         self:quit()  -- cleanup first in case `on_complete` opens another finder
-        self.on_complete(cmd, lines)
+        self.on_complete(action, lines)
     end
 end
 
@@ -267,14 +267,10 @@ function Uf:setup_keymaps(buf, keymaps)
     for k, v in pairs(keymaps) do
         if k == 'quit' then
             util.keymap({'i', 'n'}, v, function() self:quit() end, opts)
-        elseif k == 'open' then
-            util.keymap('i', v, function() self:open_result('edit') end, opts)
-        elseif k == 'open_split' then
-            util.keymap('i', v, function() self:open_result('split') end, opts)
-        elseif k == 'open_vsplit' then
-            util.keymap('i', v, function() self:open_result('vsplit') end, opts)
-        elseif k == 'open_tab' then
-            util.keymap('i', v, function() self:open_result('tabedit') end, opts)
+        elseif k == 'actions' then
+            for action, v in pairs(keymaps.actions) do
+                util.keymap('i', v, function() self:open_result(action) end, opts)
+            end
         elseif k == 'up' or k == 'down' or k == 'page_up' or k == 'page_down'
             or k == 'home' or k == 'end' or k == 'wheel_up' or k == 'wheel_down' then
             util.keymap('i', v, function() self:move_cursor_and_redraw(k) end, opts)
@@ -390,7 +386,7 @@ function Uf:hl_lines()
         local hls = self.get_highlights(self.get_line_from_match(match))
         if not vim.tbl_islist(hls) and not self.warned_get_highlights then
             self.warned_get_highlights  = true
-            util.warn('config.get_highlights() must return a list')
+            util.warnf('expected config.get_highlights() to return a list, but got %s', type(hls))
         end
         for _, hl in ipairs(hls or {}) do
             api.nvim_buf_add_highlight(self.result_buf, self.results_ns,

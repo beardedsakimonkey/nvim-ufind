@@ -10,12 +10,14 @@ local M = {}
 
 ---@class UfindConfig
 local default_config = {
-    -- Called when selecting an item to open.
-    ---@type fun(cmd: 'edit'|'split'|'vsplit'|'tabedit', lines: string[])
-    on_complete = function(cmd, lines)
+    -- Called when selecting an item to open. `action` is the name of the table
+    -- key corresponding to the key that was pressed. (eg. 'edit')
+    ---@type fun(action: string, lines: string[])
+    on_complete = function(action, lines)
+        local is_edit = action:match('edit') or action:match('split')
         for i, line in ipairs(lines) do
-            if i == #lines then  -- open the file
-                vim.cmd(cmd .. ' ' .. vim.fn.fnameescape(line))
+            if i == #lines or not is_edit then  -- execute action
+                vim.cmd(action .. ' ' .. vim.fn.fnameescape(line))
             else  -- create a buffer
                 local buf = vim.fn.bufnr(line, true)
                 vim.bo[buf].buflisted = true
@@ -58,10 +60,12 @@ local default_config = {
     ---@class UfindKeymaps
     keymaps = {
         quit = '<Esc>',
-        open = '<CR>',
-        open_split = '<C-s>',
-        open_vsplit = '<C-v>',
-        open_tab = '<C-t>',
+        actions = {
+            edit = '<CR>',
+            split = '<C-s>',
+            vsplit = '<C-v>',
+            tabedit = '<C-t>',
+        },
         up = {'<C-k>', '<Up>'},
         down = {'<C-j>', '<Down>'},
         page_up = {'<C-b>', '<PageUp>'},
