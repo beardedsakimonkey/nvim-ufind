@@ -9,7 +9,7 @@ local api = vim.api
 local M = {}
 
 ---@class UfindConfig
-local default_config = {
+M.default_config = {
     -- Called when selecting an item to open. `action` is the name of the table
     -- key corresponding to the key that was pressed. (eg. 'edit')
     ---@type fun(action: string, lines: string[])
@@ -83,20 +83,20 @@ local default_config = {
 
 function validate_config(config)
     for k, _ in pairs(config) do
-        if default_config[k] == nil then
+        if M.default_config[k] == nil then
             util.warnf('Invalid config key `config.%s`', k)
         end
     end
     if config.layout then
         for k, _ in pairs(config.layout) do
-            if default_config.layout[k] == nil then
+            if M.default_config.layout[k] == nil then
                 util.warnf('Invalid config key `config.layout.%s`', k)
             end
         end
     end
     if config.keymaps then
         for k, _ in pairs(config.keymaps) do
-            if default_config.keymaps[k] == nil then
+            if M.default_config.keymaps[k] == nil then
                 util.warnf('Invalid config key `config.keymap.%s`', k)
             end
         end
@@ -111,7 +111,7 @@ function M.open(source, config)
         config = {config, 'table', true},
     })
     validate_config(config)
-    config = vim.tbl_deep_extend('keep', config or {}, default_config)
+    config = vim.tbl_deep_extend('keep', config or {}, M.default_config)
     highlight.setup(config.ansi)
     local scopes, num_captures = arg.inject_empty_captures(config.scopes)
     local uf = Uf.new(config, num_captures)
@@ -221,7 +221,7 @@ function M.open_live(source, config)
         config = {config, 'table', true},
     })
     validate_config(config)
-    config = vim.tbl_deep_extend('keep', config or {}, default_config)
+    config = vim.tbl_deep_extend('keep', config or {}, M.default_config)
     highlight.setup(config.ansi)
     local uf = Uf.new(config)
 

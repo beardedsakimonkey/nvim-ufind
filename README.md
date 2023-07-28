@@ -257,7 +257,8 @@ vim.keymap.set('n', '<space>b', function()
                     vim.cmd('bd ' .. vim.fn.fnameescape(line))
                 end
             else
-                -- ...
+                -- fallback to default `on_complete`
+                require'ufind'.default_config.on_complete(action, lines)
             end
         end,
     })

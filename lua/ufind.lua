@@ -12,4 +12,10 @@ function M.open_live(source, config)
     require'ufind.main'.open_live(source, config)
 end
 
+M.default_config = setmetatable({}, {
+    __index = function(tbl, key)
+        return require'ufind.main'.default_config[key]
+    end,
+})
+
 return M
