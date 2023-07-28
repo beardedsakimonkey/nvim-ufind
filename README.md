@@ -39,7 +39,7 @@ require'ufind'.open(source, config)
 require'ufind'.open_live(source, config)
 ```
 
-### `open(source [, config])`
+### `require'ufind'.open(source [, config])`
 
 `open()` opens a finder window populated based on the `source` parameter, which can be an array of
 strings (e.g. `{'~/foo', '~/bar'}`). You can also pass a string command as `source` to run a command
@@ -51,7 +51,7 @@ return 'rg', {'--vimgrep', 'foo'} end`).
 Results in the finder window can be filtered using the same syntax as
 [fzf](https://github.com/junegunn/fzf/#search-syntax). (Note: the OR operator is not yet supported).
 
-### `open_live(source [, config])`
+### `require'ufind'.open_live(source [, config])`
 
 Typing a query in an `open_live()` window causes the command to be re-run. `open_live()` has a
 nearly identical API as `open()`, except that `source` cannot be an array of strings (it must be a
@@ -71,9 +71,8 @@ local default_config = {
     -- key corresponding to the key that was pressed. (eg. 'edit')
     ---@type fun(action: string, lines: string[])
     on_complete = function(action, lines)
-        local is_edit = action:match('edit') or action:match('split')
         for i, line in ipairs(lines) do
-            if i == #lines or not is_edit then  -- execute action
+            if i == #lines then  -- execute action
                 vim.cmd(action .. ' ' .. vim.fn.fnameescape(line))
             else  -- create a buffer
                 local buf = vim.fn.bufnr(line, true)
@@ -114,6 +113,7 @@ local default_config = {
 
     keymaps = {
         quit = '<Esc>',
+        -- The name of an action can be anything, but it should be handled in `on_complete`.
         actions = {
             edit = '<CR>',
             split = '<C-s>',
@@ -136,7 +136,12 @@ local default_config = {
 }
 ```
 
-### sources
+### `require'ufind'.default_config`
+
+The default config table is exposed for convenience. (useful to fall back to the default
+`on_complete` function)
+
+### Sources
 
 For convenience, ufind also provides a few built-in sources.
 
@@ -150,11 +155,27 @@ buffers, and excludes the current buffer. ([source code](./lua/ufind/source/buff
 A function that returns an array of oldfiles. The list excludes oldfiles that are directories or
 are wildignored. ([source code](./lua/ufind/source/oldfiles.lua))
 
-Example configuration
----------------------
+### Matchers
+
+The matching algorithm used when filtering results can be overridden. There are two built-in
+matchers available:
+
+#### `require'ufind.matcher.default'`
+
+This is the default matcher. It uses a fuzzy filtering algorithm that's tailored to results that are
+a file path. It ranks character matches in the path's basename higher.
+
+#### `require'ufind.matcher.exact'`
+
+This is a non-fuzzy matcher, useful for matching non-path results such as grep results. It isn't
+quite an exact matcher, as it uses "smart" case-sensitivity (much like `:help 'smartcase'`).
+
+Examples
+--------
 ```lua
 local ufind = require'ufind'
 
+-- Helper containing common configuration
 local function cfg(t)
     return vim.tbl_deep_extend('keep', t, {
         layout = { border = 'single' },
@@ -166,84 +187,54 @@ local function cfg(t)
     })
 end
 
--- Buffers
+-- Example of finding buffers
 vim.keymap.set('n', '<space>b', function()
-    ufind.open(require'ufind.source.buffers'(), cfg{
-        keymaps = {
-            actions = {
-                bd = '<C-d>',
-            },
-        },
-    })
+    ufind.open(require'ufind.source.buffers'(), cfg{})
 end)
 
--- Oldfiles
+-- Example of finding oldfiles
 vim.keymap.set('n', '<space>o', function()
     ufind.open(require'ufind.source.oldfiles'(), cfg{})
 end)
 
--- Live find (command is rerun every time query is changed)
+-- Example of `open_live` (command is rerun every time query is changed)
 vim.keymap.set('n', '<space>f', function()
     ufind.open_live('fd --color=always --type=file --', cfg{ansi = true})
 end)
 
-local function on_complete_grep(action, lines)
-    for i, line in ipairs(lines) do
-        local found, _, fname, linenr = line:find('^([^:]-):(%d+):')
-        if found then
-            if i == #lines then  -- edit the last file
-                vim.cmd(action .. ' ' .. vim.fn.fnameescape(fname) .. '|' .. linenr)
-            else  -- create a buffer
-                local buf = vim.fn.bufnr(fname, true)
-                vim.bo[buf].buflisted = true
-            end
-        end
-    end
-end
-
--- Grep
+-- Example of a `:Grep` command (opens multi-selected results in a quickfix list)
 vim.api.nvim_create_user_command('Grep', function(o)
-    ufind.open('rg --vimgrep --no-column --fixed-strings --color=ansi -- ' .. o.args, cfg{
-        scopes = '^([^:]-):%d+:(.*)$',
+    ufind.open('rg --vimgrep --fixed-strings --color=ansi -- ' .. o.args, cfg{
         ansi = true,
-        on_complete = on_complete_grep,
+        scopes = '^([^:]-):%d+:%d+:(.*)$',
+        on_complete = function(action, lines)
+            local pat = '^([^:]-):(%d+):(%d+):(.*)$'
+            if #results == 1 then -- open a single result
+                local fname, linenr, colnr = results[1]:match(pat)
+                if fname then
+                    -- edit the file at the appropriate line/column number
+                    vim.cmd(('%s +%s %s | norm! %s|'):format(
+                            action, linenr, vim.fn.fnameescape(fname), colnr))
+                end
+            else -- put selected results into a quickfix list
+                vim.fn.setqflist({}, ' ', {
+                    items = vim.tbl_map(function(result)
+                        local fname, linenr, colnr, line = result:match(pat)
+                        return fname and {
+                            filename = fname,
+                            text = line,
+                            lnum = linenr,
+                            col = colnr,
+                        } or {}
+                    end, results),
+                })
+                vim.cmd(action .. '| copen | cc!')
+            end
+        end,
     })
 end, {nargs = '+'})
 
--- Live grep
-vim.keymap.set('n', '<space>g', function()
-    ufind.open_live('rg --vimgrep --no-column --fixed-strings --color=ansi -- ', cfg{
-        ansi = true,
-        on_complete = on_complete_grep,
-    })
-end)
-```
-
-Advanced configuration
-----------------------
-
-### Custom actions
-
-The actions in the default config only handle opening files. Custom actions can
-be configured in two ways:
-
-#### 1. Using the name of the action as the command to execute
-
-```lua
-vim.keymap.set('n', '<space>b', function()
-    ufind.open(require'ufind.source.buffers'(), cfg{
-        keymaps = {
-            actions = {
-                bd = '<C-d>',
-            },
-        },
-    })
-end)
-```
-
-#### 2. Custom handling in `on_complete()`
-
-```lua
+-- Example of a custom action (`:bdelete`s selected results)
 vim.keymap.set('n', '<space>b', function()
     ufind.open(require'ufind.source.buffers'(), cfg{
         keymaps = {
@@ -256,18 +247,15 @@ vim.keymap.set('n', '<space>b', function()
                 for _, line in ipairs(lines) do
                     vim.cmd('bd ' .. vim.fn.fnameescape(line))
                 end
-            else
-                -- fallback to default `on_complete`
+            else -- fallback to default `on_complete`
                 require'ufind'.default_config.on_complete(action, lines)
             end
         end,
     })
 end)
+
+-- TODO: Example of customizing the display of results
 ```
-
-### Custom result display
-
-TODO
 
 Similar plugins
 ---------------

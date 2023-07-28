@@ -14,9 +14,8 @@ M.default_config = {
     -- key corresponding to the key that was pressed. (eg. 'edit')
     ---@type fun(action: string, lines: string[])
     on_complete = function(action, lines)
-        local is_edit = action:match('edit') or action:match('split')
         for i, line in ipairs(lines) do
-            if i == #lines or not is_edit then  -- execute action
+            if i == #lines then  -- execute action
                 vim.cmd(action .. ' ' .. vim.fn.fnameescape(line))
             else  -- create a buffer
                 local buf = vim.fn.bufnr(line, true)
@@ -60,6 +59,7 @@ M.default_config = {
     ---@class UfindKeymaps
     keymaps = {
         quit = '<Esc>',
+        -- The name of an action can be anything, but it should be handled in `on_complete`.
         actions = {
             edit = '<CR>',
             split = '<C-s>',
