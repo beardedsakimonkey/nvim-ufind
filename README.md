@@ -1,12 +1,10 @@
-ufind
-=====
+# ufind
 
 A simple finder plugin for neovim.
 
 https://user-images.githubusercontent.com/54521218/206877185-454b8174-b16f-41c2-9cb8-5d389f8923d5.mov
 
-Features
---------
+### Features
   - Fuzzy filtering that's scoped to fields defined by a regex
     - e.g. `^([^:]-):%d+:(.*)$` enables querying against the filename and the line seperately in
       the output of a grep command.
@@ -17,16 +15,14 @@ Features
   - Easy to debug
     - ~1k sloc, no coroutines, no dependencies
 
-Non-features
-------------
+### Non-features
   - Rich feature set
     - no file previews, no icons
   - Lots of built-in sources
     - currently only `buffers` and `oldfiles` are provided
   - Lots of configuration options
 
-API
----
+## API
 
 ### `require'ufind'.open(source [, config])`
 
@@ -157,10 +153,10 @@ a file path. It ranks character matches in the path's basename higher.
 #### `require'ufind.matcher.exact'`
 
 This is a non-fuzzy matcher, useful for matching non-path results such as grep results. It isn't
-quite an exact matcher, as it uses "smart" case-sensitivity (much like `:help 'smartcase'`).
+quite an exact matcher, as it uses "smart" case-sensitivity (much like vim's `'smartcase'`).
 
-Examples
---------
+## Examples
+
 ```lua
 local ufind = require'ufind'
 
@@ -246,13 +242,13 @@ end)
 -- TODO: Example of customizing the display of results
 ```
 
-Similar plugins
----------------
+## Similar plugins
+
   - [fzf-lua](https://github.com/ibhagwan/fzf-lua)
   - [telescope](https://github.com/nvim-telescope/telescope.nvim)
   - [snap](https://github.com/camspiers/snap)
   - [azy.nvim](https://git.sr.ht/~vigoux/azy.nvim/)
 
-Copyright
----------
+## Copyright
+
 MIT License
