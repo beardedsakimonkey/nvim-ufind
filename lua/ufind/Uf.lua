@@ -9,7 +9,7 @@ local api = vim.api
 ---@class Ufind
 ---@field cur_input            number
 ---@field input_bufs           number[]
----@field on_complete          fun(string, string)
+---@field on_complete          fun(string, string[])
 ---@field orig_win             number
 ---@field result_buf           number
 ---@field input_win            number
@@ -235,22 +235,22 @@ function Uf:quit()
 end
 
 function Uf:open_result(action)
-    local lines = {}
+    local results = {}
     if next(self.selections) ~= nil then
         for idx, _ in pairs(self.selections) do
             local line = self:get_line(idx)
-            lines[#lines+1] = self.ansi and ansi.strip(line) or line
+            results[#results+1] = self.ansi and ansi.strip(line) or line
         end
     else
         local cursor = self:get_cursor()
         local line = api.nvim_buf_get_lines(self.result_buf, cursor-1, cursor, false)[1]
         if line ~= '' then
-            lines[1] = line  -- ansi codes already stripped
+            results[1] = line  -- ansi codes already stripped
         end
     end
-    if next(lines) ~= nil then
+    if next(results) ~= nil then
         self:quit()  -- cleanup first in case `on_complete` opens another finder
-        self.on_complete(action, lines)
+        self.on_complete(action, results)
     end
 end
 

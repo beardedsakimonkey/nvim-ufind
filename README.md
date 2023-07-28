@@ -27,17 +27,6 @@ Non-features
 
 API
 ---
-Ufind provides just two functions:
-
-```lua
----@param source string[] | string | fun():string,string[]?
----@param config UfindConfig?
-require'ufind'.open(source, config)
-
----@param source string | fun(query: string):string,string[]?
----@param config UfindConfig?
-require'ufind'.open_live(source, config)
-```
 
 ### `require'ufind'.open(source [, config])`
 
@@ -69,20 +58,20 @@ default config:
 local default_config = {
     -- Called when selecting an item to open. `action` is the name of the table
     -- key corresponding to the key that was pressed. (eg. 'edit')
-    ---@type fun(action: string, lines: string[])
-    on_complete = function(action, lines)
-        for i, line in ipairs(lines) do
-            if i == #lines then  -- execute action
-                vim.cmd(action .. ' ' .. vim.fn.fnameescape(line))
+    ---@type fun(action: string, results: string[])
+    on_complete = function(action, results)
+        for i, result in ipairs(results) do
+            if i == #results then  -- execute action
+                vim.cmd(action .. ' ' .. vim.fn.fnameescape(result))
             else  -- create a buffer
-                local buf = vim.fn.bufnr(line, true)
+                local buf = vim.fn.bufnr(result, true)
                 vim.bo[buf].buflisted = true
             end
         end
     end,
 
     -- Returns custom highlight ranges to highlight the result line.
-    ---@type fun(line: string): {col_start: number, col_end: number, hl_group: string}[]?
+    ---@type fun(result: string): {col_start: number, col_end: number, hl_group: string}[]?
     get_highlights = nil,
 
     -- Function to override the default matcher with. If `query` is contained in `str`, it
@@ -187,27 +176,27 @@ local function cfg(t)
     })
 end
 
--- Example of finding buffers
+-- Example of finding vim buffers
 vim.keymap.set('n', '<space>b', function()
     ufind.open(require'ufind.source.buffers'(), cfg{})
 end)
 
--- Example of finding oldfiles
+-- Example of finding vim oldfiles
 vim.keymap.set('n', '<space>o', function()
     ufind.open(require'ufind.source.oldfiles'(), cfg{})
 end)
 
--- Example of `open_live` (command is rerun every time query is changed)
+-- Example of finding a file within the current directory
 vim.keymap.set('n', '<space>f', function()
     ufind.open_live('fd --color=always --type=file --', cfg{ansi = true})
 end)
 
--- Example of a `:Grep` command (opens multi-selected results in a quickfix list)
+-- Example of a `:Grep` command
 vim.api.nvim_create_user_command('Grep', function(o)
     ufind.open('rg --vimgrep --fixed-strings --color=ansi -- ' .. o.args, cfg{
         ansi = true,
         scopes = '^([^:]-):%d+:%d+:(.*)$',
-        on_complete = function(action, lines)
+        on_complete = function(action, results)
             local pat = '^([^:]-):(%d+):(%d+):(.*)$'
             if #results == 1 then -- open a single result
                 local fname, linenr, colnr = results[1]:match(pat)
@@ -234,7 +223,7 @@ vim.api.nvim_create_user_command('Grep', function(o)
     })
 end, {nargs = '+'})
 
--- Example of a custom action (`:bdelete`s selected results)
+-- Example of a custom action
 vim.keymap.set('n', '<space>b', function()
     ufind.open(require'ufind.source.buffers'(), cfg{
         keymaps = {
@@ -242,13 +231,13 @@ vim.keymap.set('n', '<space>b', function()
                 delete_buffer = '<C-d>',
             },
         },
-        on_complete = function(action, lines)
-            if action == 'delete_buffer' then
-                for _, line in ipairs(lines) do
-                    vim.cmd('bd ' .. vim.fn.fnameescape(line))
+        on_complete = function(action, results)
+            if action == 'delete_buffer' then -- `:bdelete` selected results
+                for _, result in ipairs(results) do
+                    vim.cmd('bd ' .. vim.fn.fnameescape(result))
                 end
             else -- fallback to default `on_complete`
-                require'ufind'.default_config.on_complete(action, lines)
+                require'ufind'.default_config.on_complete(action, results)
             end
         end,
     })

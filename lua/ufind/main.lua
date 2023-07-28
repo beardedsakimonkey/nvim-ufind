@@ -12,13 +12,13 @@ local M = {}
 M.default_config = {
     -- Called when selecting an item to open. `action` is the name of the table
     -- key corresponding to the key that was pressed. (eg. 'edit')
-    ---@type fun(action: string, lines: string[])
-    on_complete = function(action, lines)
-        for i, line in ipairs(lines) do
-            if i == #lines then  -- execute action
-                vim.cmd(action .. ' ' .. vim.fn.fnameescape(line))
+    ---@type fun(action: string, results: string[])
+    on_complete = function(action, results)
+        for i, result in ipairs(results) do
+            if i == #results then  -- execute action
+                vim.cmd(action .. ' ' .. vim.fn.fnameescape(result))
             else  -- create a buffer
-                local buf = vim.fn.bufnr(line, true)
+                local buf = vim.fn.bufnr(result, true)
                 vim.bo[buf].buflisted = true
             end
         end
@@ -26,7 +26,7 @@ M.default_config = {
 
     -- Returns custom highlight ranges to highlight the result line.
     ---@alias UfindHighlightRange {col_start: number, col_end: number, hl_group: string}
-    ---@type boolean | (fun(line: string): UfindHighlightRange[])
+    ---@type boolean | (fun(result: string): UfindHighlightRange[])
     get_highlights = false,
 
     -- Function to override the default matcher with. If `query` is contained in `str`, it
