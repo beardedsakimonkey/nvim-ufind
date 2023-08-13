@@ -74,7 +74,7 @@ local default_config = {
     -- should return a list of positions and a score. Otherwise, it returns nil. The higher the
     -- score, the better the match.
     ---@type fun(str: string, query: string): (number[],number)|nil
-    match = require('ufind.matcher.default'),
+    matcher = require('ufind.matcher.default'),
 
     -- Lua pattern with capture groups that defines scopes that will be queried individually.
     scopes = '^(.*)$',
@@ -192,6 +192,7 @@ vim.api.nvim_create_user_command('Grep', function(o)
     ufind.open('rg --vimgrep --fixed-strings --color=ansi -- ' .. o.args, cfg{
         ansi = true,
         scopes = '^([^:]-):%d+:%d+:(.*)$',
+        matcher = require'ufind.matcher.exact',
         on_complete = function(action, results)
             local pat = '^([^:]-):(%d+):(%d+):(.*)$'
             if #results == 1 then -- open a single result
