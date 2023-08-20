@@ -220,6 +220,14 @@ function Uf:move_cursor_and_redraw(m)
     end
 end
 
+---@param m 'scroll_left'|'scroll_right'
+function Uf:scroll_horizontally(m)
+    local cmd = m == 'scroll_right' and 'zl' or 'zh'
+    api.nvim_win_call(self.result_win, function()
+        vim.cmd('norm! ' .. cmd)
+    end)
+end
+
 function Uf:quit()
     -- Important to delete the WinClosed autocmd *before* closing windows
     api.nvim_del_autocmd(self.winclosed_auid)
@@ -274,6 +282,8 @@ function Uf:setup_keymaps(buf, keymaps)
         elseif k == 'up' or k == 'down' or k == 'page_up' or k == 'page_down'
             or k == 'home' or k == 'end' or k == 'wheel_up' or k == 'wheel_down' then
             util.keymap('i', v, function() self:move_cursor_and_redraw(k) end, opts)
+        elseif k == 'scroll_left' or k == 'scroll_right' then
+            util.keymap('i', v, function() self:scroll_horizontally(k) end, opts)
         elseif k == 'prev_scope' then
             util.keymap('i', v, function() self:switch_input_buf(false) end, opts)
         elseif k == 'next_scope' then
