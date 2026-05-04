@@ -394,7 +394,7 @@ function Uf:hl_lines()
     end
     for i, match in ipairs(self:get_visible_matches()) do
         local hls = self.get_highlights(self.get_line_from_match(match))
-        if not vim.tbl_islist(hls) and not self.warned_get_highlights then
+        if not vim.islist(hls) and not self.warned_get_highlights then
             self.warned_get_highlights  = true
             util.warnf('expected config.get_highlights() to return a list, but got %s', type(hls))
         end

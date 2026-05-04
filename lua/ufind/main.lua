@@ -84,6 +84,8 @@ M.default_config = {
 }
 
 function validate_config(config)
+    if not config then return end
+
     for k, _ in pairs(config) do
         if M.default_config[k] == nil then
             util.warnf('Invalid config key `config.%s`', k)
@@ -139,6 +141,7 @@ function M.open(source, config)
     end
 
     local done = false  -- job has exited
+    local has_rendered_matches = false
 
     local function redraw(is_cmd)
         if not api.nvim_buf_is_valid(uf.result_buf) then  -- window has been closed
@@ -150,8 +153,9 @@ function M.open(source, config)
         -- a command, avoid redrawing. (if the user has queried before the command completed, we
         -- still redraw via `on_lines`)
         local is_vp_full = api.nvim_buf_line_count(uf.result_buf) == uf:get_vp_height()
-        if not (is_vp_full and is_cmd) then
+        if not (is_vp_full and is_cmd and has_rendered_matches) then
             uf:redraw_results()
+            has_rendered_matches = #uf.matches > 0
         end
     end
 
@@ -200,16 +204,30 @@ function M.open(source, config)
         done = true
     end
 
+    local function update_input(i, buf)
+        if not api.nvim_buf_is_valid(uf.result_buf) then
+            return
+        end
+        uf.queries[i] = uf.get_query(buf)  -- update stored queries
+        uf.matches = get_matches(lines)  -- store matches for when we scroll
+        redraw(false)
+    end
+
+    local function schedule_input_update(i, buf)
+        vim.schedule(function()
+            update_input(i, buf)
+        end)
+    end
+
     for i, buf in ipairs(uf.input_bufs) do
-        -- Note: `on_lines` gets called immediately because of setting the prompt
         api.nvim_buf_attach(buf, false, {
             on_lines = function()
-                uf.queries[i] = uf.get_query(buf)  -- update stored queries
-                uf.matches = get_matches(lines)  -- store matches for when we scroll
-                -- TODO: should we cancel previous redraw?
-                vim.schedule(function() redraw(false) end)
+                schedule_input_update(i, buf)
             end
         })
+    end
+    for i, buf in ipairs(uf.input_bufs) do
+        schedule_input_update(i, buf)
     end
 
     vim.cmd('startinsert')
@@ -245,7 +263,7 @@ function M.open_live(source, config)
     end
 
     local done = false  -- current job has exited
-    local has_drawn = false  -- current job has redrawn at least once
+    local has_rendered_matches = false  -- current job has redrawn non-empty results
 
     local sched_redraw = util.schedule_wrap_t(function()
         if not api.nvim_buf_is_valid(uf.result_buf) then  -- window has been closed
@@ -257,9 +275,9 @@ function M.open_live(source, config)
         -- Note that we can't check `#stdoutbuf > 1` do determine if we've already redrawn because
         -- this function is scheduled, so the first redraw might not be for the first stdout chunk.
         local is_vp_full = api.nvim_buf_line_count(uf.result_buf) == uf:get_vp_height()
-        if not (is_vp_full and has_drawn) then
+        if not (is_vp_full and has_rendered_matches) then
             uf:redraw_results()
-            has_drawn = true
+            has_rendered_matches = #uf.matches > 0
         end
     end)
 
@@ -268,7 +286,10 @@ function M.open_live(source, config)
     -- the stale job. We track the pid of the current job to ignore stale on_exit's.
     local cur_pid
 
-    local function on_lines()
+    local function update_input()
+        if not api.nvim_buf_is_valid(uf.result_buf) then
+            return
+        end
         uf:move_cursor(-math.huge)  -- move cursor to top
         if kill_job then kill_job() end  -- kill previous job if active
         uf.selections = {}  -- reset multiselections
@@ -296,17 +317,22 @@ function M.open_live(source, config)
             done = true
             sched_redraw()  -- redraw virt text without loading indicator
         end
-        has_drawn = false
+        has_rendered_matches = false
         done = false
         kill_job, pid = util.spawn(cmd, args or {}, on_stdout, on_exit)
         cur_pid = pid
+    end
+
+    local function schedule_input_update()
+        vim.schedule(update_input)
     end
 
     uf:on_bufunload(function()
         if kill_job then kill_job() end
     end)
 
-    api.nvim_buf_attach(uf.input_bufs[1], false, {on_lines = on_lines})
+    api.nvim_buf_attach(uf.input_bufs[1], false, {on_lines = schedule_input_update})
+    schedule_input_update()
     vim.cmd('startinsert')
 end
 
