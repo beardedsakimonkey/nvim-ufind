@@ -8,9 +8,10 @@ local function hl_exists(name)
     if not ok1 or not ok2 then
         return false
     end
-    -- Hack: if the highlight has been cleared (eg via `:syn reset`), we get a table with a `true`
-    -- key for some reason.
-    if hl1[true] and hl2[true] then  -- cleared
+    -- Hack: cleared highlight groups have changed shape across Nvim versions.
+    local is_cleared = next(hl1) == nil and next(hl2) == nil
+        or hl1[true] and hl2[true]
+    if is_cleared then
         return false
     end
     return true
@@ -23,18 +24,6 @@ local function set_hl(name, val)
 end
 
 local function setup_ansi()
-    -- Note: when termguicolors is set, it seems we can't use the terminal's preset 16 colors, so we
-    -- use these color shorthands as an approximation.
-    local color = {
-        [0] = 'Black',
-        [1] = 'DarkRed',
-        [2] = 'DarkGreen',
-        [3] = 'DarkYellow',
-        [4] = 'DarkBlue',
-        [5] = 'DarkMagenta',
-        [6] = 'DarkCyan',
-        [7] = 'White',
-    }
     for _, s in ipairs{'bold', 'italic', 'underline', 'reverse'} do
         local name = 'ufind_' .. s
         if not hl_exists(name) then
@@ -50,17 +39,15 @@ local function setup_ansi()
         for i = 0, 7 do
             local name = 'ufind_' .. s .. i
             if not hl_exists(name) then
+                local val = {}
                 if s == 'fg' then
-                    api.nvim_set_hl(0, name, {
-                        fg = color[i],
-                        ctermfg = i,
-                    })
+                    val.fg_indexed = i
+                    val.ctermfg = i
                 else
-                    api.nvim_set_hl(0, name, {
-                        bg = color[i],
-                        ctermbg = i,
-                    })
+                    val.bg_indexed = i
+                    val.ctermbg = i
                 end
+                api.nvim_set_hl(0, name, val)
             end
         end
     end
